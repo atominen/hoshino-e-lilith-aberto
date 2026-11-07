@@ -1,0 +1,4 @@
+# V33: extras mínimos. Não instalar Qwen3-TTS nem pyannote nesta etapa.
+kokoro>=0.9.4
+soundfile>=0.13
+huggingface_hub[cli]>=1.23

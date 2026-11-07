@@ -1,0 +1,1071 @@
+PLANO HOSHINO — GERAÇÃO DE IMAGENS, PRESETS, ETA E STANDBY
+Data: 2026-10-05
+
+======================================================================
+1. OBJETIVO
+======================================================================
+
+Consolidar a geração de imagens da Hoshino em um único modelo principal,
+com qualidade configurável por predefinições, parâmetros do gerador
+mantidos na RAM, uso da GPU apenas para cálculo Vulkan e um modo de
+standby no qual um modelo pequeno assume temporariamente a interação
+enquanto a Hoshino principal aguarda uma operação longa.
+
+Objetivos principais:
+
+- usar somente um modelo generativo de imagens;
+- priorizar qualidade e coerência acima de velocidade extrema;
+- permitir gerações de aproximadamente 3 a 4 minutos e 30 segundos
+  quando a qualidade exigir;
+- manter os pesos dos modelos de imagem na RAM;
+- usar a RX 6650 XT/Vulkan para o cálculo;
+- oferecer presets: baixo, médio, alto, muito alto e personalizada;
+- permitir que a Hoshino escolha automaticamente o preset apropriado;
+- permitir que o usuário force qualquer preset;
+- no preset personalizada, o usuário informa resolução e steps;
+- mostrar tempo estimado, progresso, tempo decorrido e tempo restante;
+- colocar a Hoshino principal em standby durante operações longas;
+- usar um modelo de aproximadamente 1.5B–2B como controlador de standby;
+- manter autoridade limitada e instruções explícitas no modelo de standby;
+- devolver o controle à Hoshino principal quando a operação terminar.
+
+
+======================================================================
+2. MODELO GENERATIVO DE IMAGENS ESCOLHIDO
+======================================================================
+
+Modelo principal:
+
+    Qwen-Image 2.1 Q6_K
+
+Componentes:
+
+    diffusion:
+        qwen_image_2.1-Q6_K.gguf
+
+    text encoder:
+        Qwen3-VL-8B-Instruct-Q5_K_M.gguf
+
+    VAE:
+        qwen_image_2.1_vae_bf16.safetensors
+
+Motivos para escolher o Qwen-Image 2.1:
+
+- melhor capacidade semântica que o FLUX.2 klein nos testes complexos;
+- melhor candidato para cenas com várias relações e restrições;
+- suporte a geração e edição;
+- arquitetura preparada para referências visuais;
+- encoder Qwen3-VL mais forte para compreensão semântica;
+- melhor base futura para personagens específicos;
+- melhor base para geração guiada por pesquisa e referências;
+- funcionamento já validado localmente em 768x768.
+
+Resultado real já obtido:
+
+    resolução: 768x768
+    steps: 16
+    geração concluída: SIM
+    tempo total aproximado: 319 segundos
+    parâmetros reportados: ~11.45 GB
+    parâmetros em VRAM: 0 MB
+    parâmetros em RAM: ~11.45 GB
+
+Observação importante:
+
+"0 MB VRAM" refere-se aos pesos/parâmetros reportados pelo backend.
+A GPU ainda utiliza VRAM para buffers temporários e operações de cálculo.
+
+O Ideogram 4 não será mantido como segundo gerador.
+A arquitetura final deverá possuir apenas um gerador principal.
+
+
+======================================================================
+3. ARQUITETURA DE MEMÓRIA E GPU
+======================================================================
+
+Objetivo:
+
+    PESOS DOS MODELOS -> RAM
+    CÁLCULO DE DIFUSÃO -> GPU/VULKAN
+    TEXT ENCODER -> CPU
+    VAE -> CPU
+
+Configuração-base:
+
+    --backend "te=cpu,vae=cpu,diffusion=vulkan0"
+    --params-backend "te=cpu,vae=cpu,diffusion=cpu"
+    --max-vram "vulkan0=6"
+    --fa
+    --diffusion-fa
+    --vae-tiling
+
+A RX 6650 XT não deve ser usada para manter permanentemente os pesos do
+gerador.
+
+A VRAM será reservada principalmente para:
+
+- execução dos grafos;
+- buffers temporários;
+- atenção;
+- operações intermediárias da difusão.
+
+Isso reduz conflito entre:
+
+- modelo principal da Hoshino;
+- geração de imagens;
+- sistema gráfico;
+- outros processos Vulkan.
+
+
+======================================================================
+4. PREDEFINIÇÕES DE QUALIDADE
+======================================================================
+
+A Hoshino terá cinco modos:
+
+    BAIXO
+    MÉDIO
+    ALTO
+    MUITO ALTO
+    PERSONALIZADA
+
+
+----------------------------------------------------------------------
+4.1 BAIXO
+----------------------------------------------------------------------
+
+Uso:
+
+- rascunhos;
+- testes rápidos;
+- ícones;
+- imagens que não precisam de detalhes finos;
+- quando a intenção é somente visualizar uma ideia.
+
+Configuração inicial:
+
+    resolução-base: 512x512
+    steps: 6
+    CFG: configuração recomendada do Qwen-Image 2.1
+    sampler: Euler
+
+Meta:
+
+    menor latência possível sem destruir completamente a composição.
+
+
+----------------------------------------------------------------------
+4.2 MÉDIO
+----------------------------------------------------------------------
+
+Uso:
+
+- imagens comuns;
+- cenários simples;
+- ilustrações sem muitas restrições;
+- imagens de conversa que não precisam ser finais.
+
+Configuração inicial:
+
+    resolução-base: 640x640
+    steps: 8
+
+Meta:
+
+    equilíbrio entre velocidade e qualidade.
+
+
+----------------------------------------------------------------------
+4.3 ALTO
+----------------------------------------------------------------------
+
+Uso:
+
+- personagens específicos;
+- cenas detalhadas;
+- múltiplos objetos;
+- anatomia importante;
+- paisagens complexas;
+- imagens destinadas a projetos.
+
+Configuração inicial:
+
+    resolução-base: 768x768
+    steps: 10
+
+Meta:
+
+    alta qualidade mantendo a geração aproximadamente dentro da janela
+    normal definida para a Hoshino.
+
+
+----------------------------------------------------------------------
+4.4 MUITO ALTO
+----------------------------------------------------------------------
+
+Uso:
+
+- imagem final;
+- personagem importante;
+- texto na imagem;
+- relações espaciais;
+- várias restrições simultâneas;
+- composição difícil;
+- pedido explícito de melhor qualidade;
+- imagem que será validada e possivelmente regenerada.
+
+Configuração inicial:
+
+    resolução-base: 768x768
+    steps: 12
+
+Meta:
+
+    ficar próximo de 4 minutos a 4 minutos e 30 segundos na máquina atual,
+    depois de calibração real.
+
+
+----------------------------------------------------------------------
+4.5 PERSONALIZADA
+----------------------------------------------------------------------
+
+Uso:
+
+O usuário controla explicitamente:
+
+    largura
+    altura
+    steps
+
+Exemplos:
+
+    "gere em personalizada 1024x768 com 14 steps"
+
+    "use 896x1152 e 18 steps"
+
+    "quero 512x512 com 4 steps"
+
+Comportamento:
+
+- a Hoshino NÃO substitui silenciosamente os valores pedidos;
+- calcula o tempo estimado antes de iniciar;
+- informa se o pedido provavelmente passará da janela normal;
+- se o usuário explicitamente pediu os valores, eles têm prioridade;
+- aplicar somente limites técnicos necessários para impedir valores
+  inválidos ou impossíveis para o backend.
+
+Campos:
+
+    preset = personalizada
+    largura = valor_do_usuario
+    altura = valor_do_usuario
+    steps = valor_do_usuario
+
+A personalizada pode ultrapassar 4m30 se os parâmetros escolhidos pelo
+usuário exigirem isso. Nesse caso a Hoshino deve avisar o ETA antes de
+iniciar, mas não reduzir automaticamente a qualidade.
+
+
+======================================================================
+5. ESCOLHA AUTOMÁTICA DO PRESET
+======================================================================
+
+A escolha não deve depender somente de uma decisão vaga do LLM.
+
+Regras determinísticas devem ajudar a decisão.
+
+Exemplos:
+
+Pedido:
+    "faz um rascunho rápido de uma casa"
+
+Preset:
+    BAIXO
+
+
+Pedido:
+    "gera uma paisagem simples"
+
+Preset:
+    MÉDIO
+
+
+Pedido:
+    "gere a Zero Two numa estação espacial"
+
+Preset:
+    ALTO
+
+
+Pedido:
+    "imagem final, mantenha exatamente duas luas, texto correto,
+     mãos corretas e composição cinematográfica"
+
+Preset:
+    MUITO ALTO
+
+
+Pedido:
+    "1024x768, 15 steps"
+
+Preset:
+    PERSONALIZADA
+
+
+Prioridade:
+
+    1. configuração explícita do usuário;
+    2. personalizada quando resolução/steps forem explicitamente definidos;
+    3. complexidade do pedido;
+    4. preset automático.
+
+
+======================================================================
+6. RESOLUÇÃO E PROPORÇÃO
+======================================================================
+
+Os presets devem trabalhar com uma quantidade de pixels aproximadamente
+equivalente, adaptando a proporção à intenção.
+
+Exemplos:
+
+quadrado:
+    768x768
+
+retrato:
+    usar proporção vertical equivalente em custo
+
+paisagem:
+    usar proporção horizontal equivalente em custo
+
+A Hoshino deve reconhecer pedidos como:
+
+    "wallpaper"
+    "retrato"
+    "quadrado"
+    "paisagem"
+    "vertical"
+    "banner"
+
+e escolher a proporção adequada sem transformar silenciosamente um preset
+normal em uma resolução muito mais cara.
+
+
+======================================================================
+7. TEMPO ESTIMADO E PROGRESSO
+======================================================================
+
+A Hoshino deve mostrar uma previsão antes e durante a geração.
+
+Ao enfileirar:
+
+    IMAGEM_ENFILEIRADA=SIM
+    JOB_ID=img-123
+    PRESET=muito_alto
+    RESOLUCAO=768x768
+    STEPS=12
+    TEMPO_ESTIMADO=04:18
+    STATUS=queued
+
+Durante:
+
+    STATUS=running
+    PROGRESSO=7/12
+    DECORRIDO=02:21
+    RESTANTE_ESTIMADO=01:53
+
+No fim:
+
+    STATUS=done
+    TEMPO_REAL=04:11
+    CAMINHO=/.../imagem.png
+
+
+======================================================================
+8. ETA ADAPTATIVO
+======================================================================
+
+O tempo não deve permanecer baseado somente em uma tabela fixa.
+
+O sistema deverá guardar estatísticas reais por combinação de:
+
+- preset;
+- largura;
+- altura;
+- steps;
+- modelo;
+- hardware;
+- versão do backend.
+
+Exemplo:
+
+    muito_alto / 768x768 / 12 steps
+
+    execução 1: 258 s
+    execução 2: 247 s
+    execução 3: 263 s
+
+    média recente: ~256 s
+
+A estimativa futura usa histórico real da própria máquina.
+
+Durante a geração, o ETA deve ser refinado usando:
+
+- step atual;
+- tempo médio por step;
+- tempo decorrido;
+- estimativa histórica do VAE/decode;
+- quantidade de steps restantes.
+
+O log do sd-cli já informa progresso do tipo:
+
+    1/12
+    2/12
+    ...
+    12/12
+
+Esse dado deve alimentar o estado do job.
+
+
+======================================================================
+9. MODELO DE STANDBY
+======================================================================
+
+Trocar a ideia anterior de um modelo 0.8B por:
+
+    Qwen3-1.7B
+
+Faixa desejada:
+
+    aproximadamente 1.5B–2B parâmetros
+
+Configuração recomendada:
+
+    Qwen3-1.7B Q4_K_M
+
+ou, se a qualidade adicional compensar o pequeno aumento:
+
+    Qwen3-1.7B Q5_K_M
+
+Escolha inicial recomendada:
+
+    Qwen3-1.7B Q4_K_M
+
+Motivos:
+
+- significativamente mais capaz que um modelo de 0.8B;
+- ainda pequeno para CPU;
+- baixo uso de RAM;
+- rápido o suficiente para status e conversa simples;
+- compatível com llama.cpp;
+- não precisa disputar a GPU com o gerador de imagens.
+
+O modelo de standby deve rodar:
+
+    CPU somente
+    RAM somente
+
+Preferencialmente em um processo/servidor separado do modelo principal.
+
+
+======================================================================
+10. O MODELO DE STANDBY NÃO É OUTRA HOSHINO
+======================================================================
+
+O Qwen3-1.7B não deve assumir identidade independente.
+
+Ele funciona como:
+
+    controlador temporário;
+    porta-voz;
+    guardião de estado;
+    interface durante operações longas.
+
+Ele recebe da Hoshino principal:
+
+- contexto mínimo necessário;
+- motivo do standby;
+- job_id;
+- ETA;
+- instruções explícitas;
+- ações permitidas;
+- ações proibidas;
+- condição para devolver o controle.
+
+
+======================================================================
+11. CONTRATO DE HANDOFF
+======================================================================
+
+Exemplo conceitual:
+
+{
+    "mode": "standby",
+    "reason": "image_generation",
+    "job_id": "img-123",
+    "preset": "muito_alto",
+    "eta_seconds": 258,
+
+    "instructions": [
+        "A geração está em andamento.",
+        "Informe status real quando solicitado.",
+        "Não invente resultados."
+    ],
+
+    "allowed": [
+        "informar_status",
+        "informar_progresso",
+        "informar_tempo_restante",
+        "conversacao_simples",
+        "guardar_mensagem_para_hoshino"
+    ],
+
+    "forbidden": [
+        "inventar_resultado",
+        "afirmar_conclusao_sem_evidencia",
+        "mudar_o_plano_da_hoshino",
+        "alterar_memoria_importante",
+        "executar_tarefas_complexas_por_conta_propria",
+        "fingir_ser_o_modelo_principal"
+    ],
+
+    "return_control_when": [
+        "image_done",
+        "image_error"
+    ]
+}
+
+
+======================================================================
+12. COMPORTAMENTO DURANTE STANDBY
+======================================================================
+
+Usuário:
+    "quanto falta?"
+
+Standby:
+    consulta o job real e responde com o ETA atualizado.
+
+
+Usuário:
+    "já terminou?"
+
+Standby:
+    consulta o estado real.
+    Nunca responde "sim" apenas por estimativa.
+
+
+Usuário:
+    "quando terminar me mostra"
+
+Standby:
+    registra a intenção associada ao job.
+
+
+Usuário envia uma tarefa complexa nova:
+
+Standby:
+    preserva a mensagem para a Hoshino principal.
+    Não tenta resolver algo além da sua autoridade.
+
+
+======================================================================
+13. ESTADOS DO SISTEMA
+======================================================================
+
+Máquina de estados proposta:
+
+    ACTIVE
+        |
+        v
+    PREPARING_IMAGE
+        |
+        v
+    HANDOFF_TO_STANDBY
+        |
+        v
+    STANDBY
+        |
+        v
+    IMAGE_RUNNING
+        |
+        +-------------------+
+        |                   |
+        v                   v
+    IMAGE_DONE          IMAGE_ERROR
+        |                   |
+        +---------+---------+
+                  |
+                  v
+             WAKING_MAIN
+                  |
+                  v
+               ACTIVE
+
+
+======================================================================
+14. FLUXO COMPLETO DE GERAÇÃO
+======================================================================
+
+1. Usuário pede uma imagem.
+
+2. Hoshino interpreta o pedido.
+
+3. Hoshino identifica:
+   - personagens;
+   - cenário;
+   - quantidade de objetos;
+   - relações espaciais;
+   - texto necessário;
+   - restrições;
+   - proporção;
+   - nível de qualidade.
+
+4. Quando necessário, Hoshino pode pesquisar informações/referências.
+
+5. Hoshino monta um prompt estruturado.
+
+6. Hoshino escolhe:
+   - baixo;
+   - médio;
+   - alto;
+   - muito alto;
+   - personalizada.
+
+7. Hoshino calcula ETA.
+
+8. Hoshino cria o job de imagem.
+
+9. Hoshino prepara o handoff.
+
+10. Modelo principal entra em standby/descarrega os recursos que não
+    precisam permanecer ativos.
+
+11. Qwen3-1.7B assume temporariamente a interface.
+
+12. Qwen-Image 2.1 executa com pesos na RAM e compute Vulkan.
+
+13. Standby acompanha:
+    - status;
+    - step atual;
+    - tempo;
+    - erros.
+
+14. Geração termina.
+
+15. Standby valida que o arquivo realmente existe.
+
+16. Controle volta à Hoshino principal.
+
+17. Hoshino recebe:
+    - resultado;
+    - caminho;
+    - tempo real;
+    - parâmetros usados;
+    - logs essenciais.
+
+18. Hoshino pode analisar/validar a imagem.
+
+19. Se necessário, ela corrige/regenera.
+
+20. Resultado é entregue ao usuário.
+
+
+======================================================================
+15. PESQUISA E PERSONAGENS ESPECÍFICOS
+======================================================================
+
+O gerador não deve ser responsável sozinho por "saber tudo".
+
+Para personagens específicos:
+
+Pedido:
+    "gere Zero Two em uma estação espacial"
+
+Fluxo desejado:
+
+    Hoshino
+        |
+        +-> identifica Zero Two
+        |
+        +-> recupera conhecimento
+        |
+        +-> pesquisa quando necessário
+        |
+        +-> obtém referências quando necessário
+        |
+        +-> extrai características canônicas
+        |
+        +-> constrói prompt
+        |
+        +-> gera
+        |
+        +-> valida identidade e composição
+
+
+Validações possíveis:
+
+- personagem correto;
+- cabelo correto;
+- olhos corretos;
+- roupa correta;
+- acessórios corretos;
+- mãos;
+- quantidade de objetos;
+- posição relativa dos objetos;
+- texto;
+- coerência da cena;
+- consistência de iluminação;
+- ausência de duplicações.
+
+
+======================================================================
+16. REFERÊNCIAS VISUAIS
+======================================================================
+
+Fase futura do mesmo gerador:
+
+Qwen-Image 2.1 deve receber suporte a referências visuais.
+
+Isso permitirá:
+
+- preservar identidade;
+- usar imagens de personagens;
+- editar imagem existente;
+- manter roupa/rosto;
+- reconstruir uma cena usando referência;
+- reduzir dependência da memória visual interna do modelo.
+
+Essa capacidade pertence ao mesmo backend de imagem e não exige manter
+um segundo modelo generativo.
+
+
+======================================================================
+17. UM ÚNICO MODELO GENERATIVO
+======================================================================
+
+Arquitetura final desejada:
+
+    HOSHINO PRINCIPAL
+            |
+            v
+    PLANEJAMENTO / PESQUISA
+            |
+            v
+    QWEN-IMAGE 2.1 Q6_K
+            |
+            v
+       RESULTADO
+            |
+            v
+       VALIDAÇÃO
+
+
+Não manter:
+
+- FLUX.2 como segundo gerador permanente;
+- Ideogram 4 como segundo gerador permanente;
+- seleção dinâmica entre vários geradores.
+
+A complexidade deve ficar no planejamento da Hoshino e nos presets,
+não em uma coleção de geradores diferentes.
+
+
+======================================================================
+18. MODELOS E PAPÉIS
+======================================================================
+
+Modelo principal da Hoshino:
+    permanece responsável por raciocínio geral, planejamento e decisões.
+
+Modelo de imagem:
+    Qwen-Image 2.1 Q6_K
+    função: gerar/editar imagens.
+
+Encoder do gerador:
+    Qwen3-VL-8B-Instruct Q5_K_M
+    função: condicionamento semântico/visual do gerador.
+
+Modelo de standby:
+    Qwen3-1.7B Q4_K_M
+    função: interface temporária e controle limitado durante tarefas longas.
+
+Nenhum desses componentes deve ser confundido com uma entidade nova.
+
+
+======================================================================
+19. REGRAS DO STANDBY
+======================================================================
+
+O modelo pequeno pode:
+
+- falar com o usuário;
+- informar ETA;
+- informar progresso;
+- informar erros reais;
+- consultar estado do job;
+- guardar mensagens;
+- responder perguntas simples permitidas pelo handoff.
+
+O modelo pequeno não pode:
+
+- inventar estado;
+- concluir tarefa complexa sem a Hoshino;
+- alterar objetivos da Hoshino;
+- criar decisões estratégicas;
+- afirmar que uma operação ocorreu sem evidência;
+- alterar memória central por iniciativa própria;
+- assumir ferramentas não delegadas;
+- representar-se como uma entidade separada.
+
+
+======================================================================
+20. PRIORIDADE DE RECURSOS
+======================================================================
+
+Durante geração pesada:
+
+1. preservar sistema operacional e interface;
+2. preservar modelo de standby em CPU/RAM;
+3. manter pesos do gerador em RAM;
+4. usar Vulkan para compute;
+5. descarregar/liberar o modelo principal se necessário;
+6. evitar dois modelos grandes disputando GPU ao mesmo tempo.
+
+
+======================================================================
+21. PERSISTÊNCIA DO JOB
+======================================================================
+
+O estado do job não deve existir apenas em memória Python.
+
+Informações importantes:
+
+- job_id;
+- prompt;
+- preset;
+- resolução;
+- steps;
+- seed;
+- estado;
+- horário de início;
+- ETA inicial;
+- step atual;
+- tempo decorrido;
+- caminho final;
+- erro;
+- parâmetros;
+- versão do modelo.
+
+Devem poder ser recuperadas caso:
+
+- interface reinicie;
+- worker reinicie;
+- modelo principal seja descarregado;
+- standby assuma o controle.
+
+
+======================================================================
+22. CALIBRAÇÃO
+======================================================================
+
+Antes de fixar tempos finais:
+
+Executar uma pequena bateria real:
+
+BAIXO:
+    512x512 / 6 steps
+
+MÉDIO:
+    640x640 / 8 steps
+
+ALTO:
+    768x768 / 10 steps
+
+MUITO ALTO:
+    768x768 / 12 steps
+
+Registrar:
+
+- tempo de condicionamento;
+- tempo de sampling;
+- tempo de decode;
+- tempo total;
+- RAM;
+- falhas;
+- qualidade observada.
+
+Depois ajustar os presets com base em dados reais.
+
+
+======================================================================
+23. PRESET PERSONALIZADA — REGRAS DETALHADAS
+======================================================================
+
+Entrada mínima:
+
+    largura
+    altura
+    steps
+
+Campos opcionais futuros:
+
+    seed
+    proporção
+    CFG
+    sampler
+
+Por padrão, a personalizada deve preservar:
+
+    backend validado;
+    parâmetros na RAM;
+    VAE em CPU;
+    text encoder em CPU;
+    diffusion compute em Vulkan.
+
+Exemplo:
+
+Usuário:
+    "Hoshino, gera em personalizada 1024x1024 com 16 steps."
+
+Resposta antes de gerar:
+
+    PRESET=personalizada
+    RESOLUCAO=1024x1024
+    STEPS=16
+    TEMPO_ESTIMADO=...
+    AVISO=esta configuração pode ultrapassar 4m30
+
+Se o usuário confirmou explicitamente os parâmetros, iniciar sem
+reduzi-los silenciosamente.
+
+
+======================================================================
+24. IMPLEMENTAÇÃO — ORDEM RECOMENDADA
+======================================================================
+
+FASE 1
+- tornar Qwen-Image 2.1 o único backend oficial;
+- remover dependência lógica do FLUX.2;
+- remover dependência lógica do Ideogram 4;
+- manter backups até validação final.
+
+FASE 2
+- implementar presets:
+  baixo;
+  médio;
+  alto;
+  muito alto;
+  personalizada.
+
+FASE 3
+- implementar escolha automática;
+- permitir override explícito do usuário.
+
+FASE 4
+- implementar medição de tempo;
+- histórico;
+- ETA;
+- progresso;
+- tempo restante.
+
+FASE 5
+- implementar persistência de job.
+
+FASE 6
+- instalar/configurar Qwen3-1.7B para standby;
+- CPU-only;
+- processo independente.
+
+FASE 7
+- implementar handoff estruturado;
+- autoridade limitada;
+- retorno de controle.
+
+FASE 8
+- validar standby durante geração real.
+
+FASE 9
+- adicionar referências visuais/edição ao Qwen-Image 2.1.
+
+FASE 10
+- integrar pesquisa + preparação de referências + validação visual.
+
+
+======================================================================
+25. RESULTADO FINAL ESPERADO
+======================================================================
+
+Exemplo:
+
+Usuário:
+    "Hoshino, faça uma imagem final da Zero Two numa estação espacial,
+     com duas luas e uma estrela de nêutrons."
+
+Hoshino:
+    identifica complexidade;
+    escolhe MUITO ALTO;
+    pesquisa/reúne informação necessária;
+    prepara o prompt;
+    calcula ETA;
+    informa aproximadamente quanto vai demorar;
+    inicia o job;
+    entrega controle ao standby.
+
+Standby:
+    continua disponível;
+    responde status;
+    mostra tempo restante;
+    não inventa resultado.
+
+Qwen-Image:
+    gera com pesos na RAM e compute Vulkan.
+
+Ao terminar:
+    standby detecta conclusão real;
+    devolve controle;
+    Hoshino valida a imagem;
+    Hoshino entrega o resultado.
+
+
+======================================================================
+26. DECISÕES ATUAIS
+======================================================================
+
+GERADOR ÚNICO:
+    Qwen-Image 2.1 Q6_K
+
+ENCODER:
+    Qwen3-VL-8B-Instruct Q5_K_M
+
+VAE:
+    Qwen-Image 2.1 BF16
+
+STANDBY:
+    Qwen3-1.7B Q4_K_M
+    CPU + RAM
+
+PRESETS:
+    baixo
+    médio
+    alto
+    muito alto
+    personalizada
+
+PERSONALIZADA:
+    usuário define resolução + steps
+
+TEMPO:
+    ETA inicial + progresso + tempo restante + histórico real
+
+MEMÓRIA DO GERADOR:
+    pesos na RAM
+
+GPU:
+    compute Vulkan
+
+FILOSOFIA:
+    uma Hoshino principal;
+    um gerador de imagem;
+    um controlador temporário de standby;
+    sem criar uma segunda entidade.

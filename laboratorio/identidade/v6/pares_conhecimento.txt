@@ -1,0 +1,110 @@
+# Banco v6 — conhecimento geral, certo e curto (Claude, 07/11/2026; rascunho).
+# Função: "replay" contra esquecimento. O treino de identidade não pode tirar o que o modelo já sabia.
+# Só fatos estáveis e conhecidos; nada que mude com o tempo (preço, placar, notícia) — isso é ferramenta.
+
+# aspecto: conhecimento
+# cat: ciencia
+U: por que o céu é azul?
+H: A luz do sol bate no ar e o azul se espalha mais que as outras cores. Aí o céu fica todo azul pra quem olha.
+L: A luz do sol se espalha nas moléculas do ar, e o azul se espalha muito mais que o vermelho. Por isso o céu inteiro parece azul.
+
+U: a água ferve a quantos graus?
+H: A 100 °C ao nível do mar. Em lugar alto, ferve antes, com menos calor.
+L: A 100 °C ao nível do mar. Na montanha a pressão é menor e ela ferve abaixo disso.
+
+U: qual é o maior planeta do sistema solar?
+H: Júpiter, com folga.
+L: Júpiter. Caberiam mais de mil Terras dentro dele.
+
+U: o que é DNA?
+H: É a molécula que guarda as instruções de como um ser vivo se forma e funciona. Tipo a receita do corpo.
+L: É a molécula que carrega as instruções genéticas de um ser vivo, escritas em quatro bases: A, T, C e G.
+
+U: por que a gente tem estações do ano?
+H: Porque a Terra é inclinada. Em parte do ano um hemisfério recebe o sol mais de frente, e aí é verão lá.
+L: Por causa da inclinação do eixo da Terra. Ao longo da órbita, cada hemisfério recebe luz mais direta numa época, e isso faz o verão.
+
+U: quanto tempo a luz do sol demora pra chegar aqui?
+H: Uns oito minutos e pouco.
+L: Cerca de oito minutos e vinte segundos.
+
+# cat: historia
+U: quando o Brasil ficou independente?
+H: Em 7 de setembro de 1822.
+L: Em 7 de setembro de 1822, com Dom Pedro I.
+
+U: quem foi Santos Dumont?
+H: Um inventor brasileiro, pioneiro da aviação. Voou com o 14-Bis em Paris, em 1906.
+L: Foi um inventor brasileiro, pioneiro da aviação. O voo do 14-Bis em Paris, em 1906, ficou famoso.
+
+U: quando caiu o muro de Berlim?
+H: Em novembro de 1989.
+L: Em 9 de novembro de 1989.
+
+U: o que foi a revolução industrial?
+H: Foi quando as máquinas, primeiro a vapor, começaram a substituir o trabalho manual nas fábricas. Começou na Inglaterra no século 18.
+L: Foi a passagem do trabalho artesanal para a produção com máquinas, começando na Inglaterra no século 18, com o vapor.
+
+# cat: lingua
+U: é "mais" ou "mas" em "eu queria ir, ... choveu"?
+H: "Mas", de oposição. "Mais" é de quantidade.
+L: É "mas", porque indica oposição. "Mais" é usado para quantidade.
+
+U: qual o plural de cidadão?
+H: Cidadãos.
+L: O plural é "cidadãos".
+
+U: o que significa "efêmero"?
+H: Que dura pouco. Passageiro.
+L: Que dura pouco tempo, passageiro. Como uma bolha de sabão.
+
+U: quando se usa "há" e quando se usa "a" pra tempo?
+H: "Há" pro passado: "estive lá há dois dias". "A" pro futuro ou distância: "daqui a dois dias".
+L: "Há" indica tempo passado: "há dois dias". "A" indica futuro ou distância: "daqui a dois dias".
+
+# cat: matematica
+U: quanto é 7 vezes 12?
+H: 84.
+L: É 84.
+
+U: o que é um número primo?
+H: É o número que só divide por 1 e por ele mesmo. Tipo 2, 3, 5, 7, 11.
+L: É um número maior que 1 que só é divisível por 1 e por ele mesmo, como 2, 3, 5, 7 e 11.
+
+U: como calculo a área de um círculo?
+H: Pi vezes o raio ao quadrado. Raio 2? Dá uns 12,6.
+L: Multiplique pi pelo raio ao quadrado. Com raio 3, por exemplo, dá cerca de 28,3.
+
+U: 20% de desconto em 150 reais dá quanto?
+H: Desconto de 30, então fica 120.
+L: O desconto é de 30 reais; o preço cai para 120.
+
+# cat: computacao
+U: qual a diferença entre RAM e armazenamento?
+H: A RAM é a mesa de trabalho: rápida e esvazia quando desliga. O armazenamento é o armário: guarda tudo, mesmo desligado.
+L: A RAM é a memória rápida que o computador usa enquanto trabalha e se apaga ao desligar. O armazenamento, o disco, guarda os arquivos de forma permanente.
+
+U: o que é um arquivo .zip?
+H: É um pacote compactado: junta vários arquivos num só e geralmente ocupa menos espaço.
+L: É um arquivo compactado, que junta vários arquivos em um só e normalmente ocupa menos espaço.
+
+U: o que faz o comando ls no linux?
+H: Lista o que tem na pasta onde você tá.
+L: Ele lista os arquivos e pastas do diretório atual.
+
+U: o que é uma senha forte?
+H: Comprida, sem ser seu nome ou aniversário, e diferente em cada site. Uma frase de várias palavras funciona bem.
+L: Uma senha longa, que não use dados pessoais e não se repita em outros sites. Frases de várias palavras costumam ser ótimas.
+
+# cat: cotidiano_pratico
+U: posso misturar água sanitária com desinfetante?
+H: Não mistura, não. Algumas combinações soltam gás tóxico. Usa um de cada vez e com janela aberta.
+L: Não é seguro. Água sanitária com outros produtos pode liberar gases tóxicos. Use um por vez, com o ambiente ventilado.
+
+U: quanto tempo cozinha um ovo pra ficar duro?
+H: Uns 10 minutos depois que a água ferver.
+L: Cerca de 10 minutos, contando a partir da fervura.
+
+U: como tiro mancha de café da roupa?
+H: Água fria logo, sem esfregar com força, e depois um pouco de sabão neutro. Quanto antes, melhor.
+L: Lave logo com água fria, sem esfregar demais, e depois use sabão neutro. Quanto mais rápido, mais fácil sai.

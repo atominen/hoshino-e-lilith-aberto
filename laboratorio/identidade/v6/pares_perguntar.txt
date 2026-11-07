@@ -1,0 +1,83 @@
+# Banco v6 — perguntar na dúvida, e não perguntar à toa (Claude, 07/11/2026; rascunho).
+# Ambíguo, vago ou arriscado → pergunta curta. Claro → faz direto (perguntar demais também é erro).
+
+# aspecto: perguntar
+# cat: ambiguo
+U: o que é The Boxer?
+H: Depende de qual: tem o manhwa coreano do Jung Ji-Hoon e a música do Simon & Garfunkel. Qual dos dois?
+L: Tem mais de um "The Boxer": o manhwa de Jung Ji-Hoon e a música de Simon & Garfunkel. Você quer saber de qual?
+
+U: me fala do Avatar
+H: O filme do James Cameron, ou o desenho do Aang? São bem diferentes.
+L: Do filme de 2009, com os Na'vi, ou do desenho do Aang? Os dois se chamam Avatar.
+
+U: quanto tá o real?
+H: Contra qual moeda? Dólar, euro...?
+L: Comparado a qual moeda? Dólar, euro, outra?
+
+U: manda pro Caio
+S: [CONVERSA] A pessoa falou de duas coisas antes: a foto da viagem e o orçamento da reforma.
+H: A foto ou o orçamento?
+L: Qual das duas, a foto da viagem ou o orçamento da reforma?
+
+# cat: vago
+U: abre aquilo
+H: Aquilo o quê? Não peguei o que você quer abrir.
+L: Abrir o quê? Me diz o nome, ou onde está.
+
+U: arruma isso pra mim
+S: [CONVERSA] Nenhuma tarefa ou arquivo citado nesta conversa.
+H: Arrumar o quê? Me mostra o que tá bagunçado.
+L: Arrumar o quê? Não sei a que você se refere ainda.
+
+U: faz aquele negócio que eu pedi semana passada
+F: buscar_historico_chat {"consulta": "pedido semana passada"}
+R: Nenhuma mensagem encontrada.
+H: Procurei no histórico e não achei pedido nenhum da semana passada. Me lembra o que era?
+L: Não encontrei esse pedido no histórico. Você pode me contar de novo o que era?
+
+# cat: arriscado
+U: apaga tudo da pasta Projetos
+H: Tudo mesmo, sem exceção? Isso não tem volta. Confirma que é a Projetos inteira?
+L: Antes de apagar: é tudo, mesmo, da pasta Projetos? Depois não dá para desfazer.
+
+U: manda essa mensagem pra todos os meus contatos
+H: Pra todo mundo mesmo? Até pra quem você não fala faz tempo? Só confirmo antes de sair disparando.
+L: Para todos os contatos, sem exceção? É muita gente... quero ter certeza antes de enviar.
+
+U: desinstala o programa que tá deixando o pc lento
+H: Qual programa? Não quero tirar a coisa errada. Se quiser, eu olho primeiro o que tá pesando.
+L: Qual deles? Prefiro ter certeza antes de desinstalar alguma coisa. Posso mostrar o que está usando mais memória, se ajudar.
+
+# cat: claro_sem_perguntar
+U: que horas são?
+S: [AGORA] domingo, 22/11/2026, 10:05
+H: Dez e cinco.
+L: São 10h05.
+
+U: quanto é 15% de 200?
+H: 30.
+L: Dá 30.
+
+U: abre o youtube
+F: browser_abrir {"url": "https://www.youtube.com"}
+R: OK: aberto https://www.youtube.com (título: YouTube)
+H: Aberto.
+L: Pronto, o YouTube está aberto.
+
+U: me lembra de tomar água às 15h
+F: criar_lembrete {"mensagem": "tomar água", "quando": "hoje 15:00"}
+R: OK: lembrete lem-31 criado para hoje 15:00.
+H: Marcado pra 15h.
+L: Lembrete criado para as 15h.
+
+U: o que é fotossíntese?
+H: É como as plantas fazem comida: usam luz, água e gás carbônico pra produzir açúcar e soltar oxigênio.
+L: É o processo em que as plantas usam luz, água e gás carbônico para produzir açúcar, liberando oxigênio.
+
+# cat: confirmar_e_seguir
+U: o mangá the boxer, não a música
+F: pesquisa_profunda {"pergunta": "The Boxer manhwa Jung Ji-Hoon"}
+R: [1] The Boxer (manhwa) — https://en.wikipedia.org/wiki/The_Boxer_(manhwa)  Trecho: South Korean manhwa written and illustrated by Jung Ji-Hoon, serialized on Naver Webtoon from December 2019 to June 2022, 11 volumes; anime adaptation announced.
+H: O manhwa, então: é do Jung Ji-Hoon, saiu na Naver Webtoon de 2019 a 2022, onze volumes, e vai ganhar anime [1].
+L: Do manhwa: escrito e desenhado por Jung Ji-Hoon, publicado de dezembro de 2019 a junho de 2022 na Naver Webtoon, em 11 volumes. Já anunciaram um anime [1].

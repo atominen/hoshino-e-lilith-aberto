@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-06",
+  "stage": "Automatic verification, small public-code adaptations and Alistair PC2 package",
+  "offline": {
+    "full_suite_groups": 30,
+    "full_suite_result": "passed",
+    "new_tests": 34,
+    "new_queue_action_tests": 9,
+    "new_protocol_worker_client_tests": 16,
+    "new_package_tests": 5,
+    "additional_alistair_tests": 4,
+    "syntax_python_files": 16,
+    "shell_syntax_files": 3,
+    "temporary_state": true
+  },
+  "package": {
+    "folder": "pacotes/alistair_pc2",
+    "archive": "pacotes/alistair_pc2.tar",
+    "archive_bytes": 2565345280,
+    "archive_sha256": "95c624bb5f9baf86d5ee531a3ffa014bca31841607ca9da4a50dfa7acbeb14c6",
+    "manifest_files": 58,
+    "model_blobs_verified_against_source_digests": true,
+    "archive_file_contents_verified_against_manifest": true,
+    "private_mind_databases_included": false,
+    "private_identity_files_included": false,
+    "discord_credentials_included": false,
+    "gpu_libraries_included": false,
+    "lan_key_included": false
+  },
+  "real_package_probe": {
+    "host": "PC principal, NOT Athlon",
+    "integrity_and_local_linux_compatibility": "passed",
+    "engine": "Ollama 0.32.6 CPU",
+    "model": "alistair-qwen3-4b:latest",
+    "num_ctx": 1024,
+    "num_predict": 32,
+    "input": "Calcule 14 + 7. Responda somente o número.",
+    "answer": "21",
+    "wall_seconds_including_queue_and_load": 8.52,
+    "eval_count": 3,
+    "threads": 2,
+    "parallelism": 1,
+    "size_vram_zero_confirmed": true,
+    "owned_daemon_exit_confirmed": true,
+    "owned_port_11438_released": true,
+    "mind_messages_created": 0,
+    "pc2_or_real_lan_tested": false,
+    "pc2_cgroup_limits_tested": false,
+    "athlon_speed_inferred_from_pc1": false
+  },
+  "live_main": {
+    "old_alistair_exited_after_sleep_request": true,
+    "central_restarted_with_new_code": true,
+    "alistair_awake_confirmed_over_authenticated_http": true,
+    "alistair_model_resident_in_cpu": true,
+    "hoshino_or_lilith_awakened_for_test": false,
+    "synthetic_messages_sent_to_minds": 0,
+    "pc2_enabled": false,
+    "cloud_enabled": false
+  },
+  "human_tests_pending": [
+    "Mint version/Python/library/cgroup compatibility on PC2",
+    "LAN IP pairing and synchronized clocks",
+    "CPU/RAM limits applied on PC2 and coexistence with YouTube",
+    "Cold and warm inference latency on the Athlon HDD",
+    "Real microphone and subjective speech quality",
+    "Discord text/voice and Minecraft LAN end-to-end",
+    "Full day-to-day scenario benchmark"
+  ]
+}

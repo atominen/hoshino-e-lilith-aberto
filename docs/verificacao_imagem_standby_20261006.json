@@ -1,0 +1,91 @@
+{
+  "created_at": "2026-10-06T06:54:33-0300",
+  "standby": {
+    "answer": "Há uma imagem em execução sendo usada por Hoshino.",
+    "elapsed_seconds": 30.92,
+    "gpu_before": [
+      {
+        "token": "lease-01ddd86ba94a4cbebc076247ba7d6874",
+        "resource": "gpu",
+        "owner": "image",
+        "entity": "hoshino",
+        "pid": 12786,
+        "acquired_at": "2026-10-06T09:54:33+00:00",
+        "heartbeat": 1791280493.1924043,
+        "expires_at": 1791280583.1924043
+      }
+    ],
+    "gpu_after": [
+      {
+        "token": "lease-01ddd86ba94a4cbebc076247ba7d6874",
+        "resource": "gpu",
+        "owner": "image",
+        "entity": "hoshino",
+        "pid": 12786,
+        "acquired_at": "2026-10-06T09:54:33+00:00",
+        "heartbeat": 1791280513.1958835,
+        "expires_at": 1791280603.1958835
+      }
+    ],
+    "image_state_after": "running",
+    "residency": [
+      {
+        "name": "alistair-qwen3-4b:latest",
+        "model": "alistair-qwen3-4b:latest",
+        "size": 3184001022,
+        "digest": "ba5bbd367f6fc781802848c3df0637d3bc3e3b196ded08e504591e4906b48234",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "qwen3",
+          "families": [
+            "qwen3"
+          ],
+          "parameter_size": "4.0B",
+          "quantization_level": "Q4_K_M"
+        },
+        "expires_at": "2026-10-07T06:55:28.14299349-03:00",
+        "size_vram": 0,
+        "context_length": 4096
+      }
+    ],
+    "ok": true
+  },
+  "job_id": "img-3d910150bb21",
+  "job": {
+    "id": "img-3d910150bb21",
+    "entity": "hoshino",
+    "kind": "image",
+    "status": "done",
+    "pid": 12786,
+    "created_at": 1791280473.1792288,
+    "updated_at": 1791280682.8843944,
+    "details": {
+      "resolution": "768x768",
+      "steps": 16,
+      "seed": 61006,
+      "preset": "medio",
+      "model": "Qwen-Image-2.1-Q6_K",
+      "phase": "verified",
+      "path": "/home/gustavo/hoshino e lilith/entidades/hoshino/runtime/imagens/integracao_qwen_standby_fa4e0d23de2d.png",
+      "estimated_seconds": null,
+      "estimate_samples": 0,
+      "step": 16,
+      "started_at": 1791280473.2820776,
+      "elapsed_seconds": 209.6,
+      "seconds_per_step": 6.6,
+      "eta_seconds": 0,
+      "eta_scope": null,
+      "log": "/home/gustavo/hoshino e lilith/entidades/hoshino/runtime/diagnostics/imagem_img-3d910150bb21.log"
+    },
+    "process_stamp": "94456"
+  },
+  "ok": true,
+  "acceptance_scope": "pipeline de imagem e concorrência CPU/GPU; não é o benchmark aa",
+  "visual_review": {
+    "reviewed": true,
+    "file_integrity_and_dimensions": "PNG 768x768 decodificável",
+    "content": "Escritório aconchegante, computador e plantas visíveis. Estilo anime coerente.",
+    "prompt_fidelity": "parcial: três garotas e retratos extras em vez de duas garotas e um mordomo; não aprovar representação das identidades com esta imagem"
+  }
+}

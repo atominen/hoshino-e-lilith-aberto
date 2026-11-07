@@ -1,0 +1,12 @@
+{
+  "id": "alistair",
+  "nome": "Alistair",
+  "status": "ativa",
+  "papel": "coordenador_standby",
+  "modelo_llm": "alistair-qwen3.5-4b:latest",
+  "modelo_base": "unsloth/Qwen3.5-4B-GGUF@e87f176479d0855a907a41277aca2f8ee7a09523",
+  "memoria_herdada": false,
+  "ollama_porta": 11437,
+  "dispositivo": "cpu",
+  "voz": false
+}

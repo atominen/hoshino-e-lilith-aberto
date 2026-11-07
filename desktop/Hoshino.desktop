@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Hoshino
+Comment=Iniciar a Interface Hoshino
+Exec="/home/gustavo/hoshino e lilith/iniciar_hoshino.sh"
+Path=/home/gustavo/hoshino e lilith
+Icon=/home/gustavo/hoshino e lilith/desktop/hoshino.svg
+Terminal=true
+Categories=Utility;Development;
+StartupNotify=true

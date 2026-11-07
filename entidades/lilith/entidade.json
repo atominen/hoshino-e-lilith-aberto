@@ -1,0 +1,15 @@
+{
+  "id": "lilith",
+  "nome": "Lilith",
+  "status": "ativa",
+  "versao_identidade": 1,
+  "modelo_llm": "lilith-qwen3.5-9b:latest",
+  "modelo_base": "hf.co/ccharnkij/Qwen3.5-9B-Uncensored-GGUF:Q4_K_M",
+  "memoria_herdada": false,
+  "pesos_proprios": true,
+  "ollama_porta": 11436,
+  "inspiracoes": [
+    "Takanashi Hoshino, de Blue Archive",
+    "Lilith, de The NOexistenceN of you AND me"
+  ]
+}

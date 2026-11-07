@@ -1,0 +1,77 @@
+{
+  "stage": "Estado factual compartilhado e planejamento local de capacidades",
+  "date": "2026-10-06",
+  "reference": {
+    "original": "/home/gustavo/Downloads/conversa_hoshino_lilith_codex_ate_cloud.txt",
+    "archived": "docs/planejamento/conversa_cloud_20261006_referencia.txt",
+    "sha256_both": "25c85497fee2251a25b652e147d371fcbee726759e6331b072de88b305d76b07",
+    "treated_as": "Reference material, not financial or data-transmission authorization"
+  },
+  "offline": {
+    "full_suite_groups": 27,
+    "full_suite_result": "passed",
+    "world_state_regressions": 31,
+    "capability_router_regressions": 29,
+    "additional_http_regression": 1,
+    "new_regressions_total": 61,
+    "router_suite_repetitions": 20,
+    "router_suite_repetitions_passed": 20,
+    "syntax_checked_python_files": 14,
+    "uses_temporary_state": true,
+    "uses_live_llm_or_devices": false
+  },
+  "real_local_probe": {
+    "temporary_world_database": true,
+    "elapsed_seconds": 0.087,
+    "fact_fields": 13,
+    "known_fields": 11,
+    "unknown_keys": ["desktop.idle_seconds", "desktop.media"],
+    "failed_sources": [],
+    "ollama_inventory_read_only": true,
+    "endpoints": [
+      "http://127.0.0.1:11435/api/ps",
+      "http://127.0.0.1:11436/api/ps",
+      "http://127.0.0.1:11437/api/ps"
+    ],
+    "model_generation_requested": false,
+    "microphone_recording_requested": false
+  },
+  "live_central": {
+    "graceful_shutdown_before_restart_confirmed": true,
+    "alistair_resumed_standby": true,
+    "hoshino_or_lilith_awakened_for_test": false,
+    "synthetic_messages_sent": 0,
+    "authenticated_http_checks": {
+      "/api/world?since=0": 200,
+      "/api/routing?entity=hoshino&capability=llm": 200,
+      "/api/state?entity=lilith": 200
+    },
+    "current_fact_fields": 13,
+    "current_known_fields": 11,
+    "collector_running": true,
+    "audio_queue": 0,
+    "asr_worker_alive": false,
+    "tts_worker_alive": false,
+    "alistair_resident_model": "alistair-qwen3-4b:latest",
+    "alistair_size_vram": 0,
+    "hoshino_and_lilith_resident_models": [],
+    "cloud_ledger_created": false,
+    "cloud_enabled": false,
+    "execution_migrated": false
+  },
+  "ui_verified": {
+    "shared_facts_panel": true,
+    "origin_and_age_visible": true,
+    "unobserved_media_and_idle_marked_unknown": true,
+    "destinations": ["pc_principal", "athlon", "cloud_leve", "cloud_normal"],
+    "remote_destinations_disabled": true,
+    "billing_not_connected_warning": true
+  },
+  "limitations": [
+    "Remote RPC/execution and live latency telemetry are not connected.",
+    "Budget reservations are local estimates, not provider invoices or guaranteed spend limits.",
+    "No cloud instance was rented and no context was transmitted to providers.",
+    "No live Discord/Minecraft benchmark or human microphone/subjective voice approval in this stage.",
+    "Evolutionary values/relations and first awakening are still pending."
+  ]
+}

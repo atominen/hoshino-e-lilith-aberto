@@ -1,0 +1,53 @@
+# Dados locais nunca entram em Git. Adicionar fontes sempre explicitamente.
+**/.env
+**/*.env
+**/*.db
+**/*.sqlite*
+**/runtime/
+**/memory/
+# The memory implementation is code, not an entity's private mental data.
+!/app/memory/
+/app/memory/**
+!/app/memory/sqlite/
+!/app/memory/vector/
+!/app/memory/**/*.py
+**/workspace/
+**/versions/
+**/__pycache__/
+**/node_modules/
+**/*.log
+**/*.jsonl
+**/*.backup-*
+**/*.gguf
+**/*.safetensors
+compartilhado/ambientes/
+compartilhado/modelos/
+# Dependência upstream com checkout Git e build locais; não é código próprio.
+compartilhado/servicos/stable-diffusion.cpp/
+# Pestinha (GPL-3.0), fixado em 984fb86; corpo dos orbes o importa em processo próprio.
+compartilhado/servicos/pestinha/
+# 06/11: cópias da pessoa (Ctrl+C) guardadas para as entidades; ficam só neste PC.
+compartilhado/area_de_transferencia/
+pacotes/
+arquivo/
+compat/
+**/lan.key
+**/worker.json
+**/pareamento/
+**/central_security.json
+**/identity/self_model.json
+**/identity/constitution.json
+compartilhado/config/*
+!compartilhado/config/*.example
+entidades/*/config/*
+!entidades/*/config/*.example
+entidades/*/models/
+
+# Laboratório privado: modelos, históricos, venv e checkpoints locais
+/laboratorio-local/
+
+# Cópia pública: o banco de treino compilado entra no repositório.
+!banco_treino_v6/
+!banco_treino_v6/banco.sqlite3
+!banco_treino_v6/pacote/
+!banco_treino_v6/pacote/*

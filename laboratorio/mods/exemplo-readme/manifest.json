@@ -1,0 +1,7 @@
+{
+  "id": "exemplo-readme",
+  "name": "Exemplo de substituição reversível",
+  "version": "1.0.0",
+  "description": "Troca README.md apenas na cópia do laboratório, para comprovar que os originais não foram modificados.",
+  "overrides": {"README.md": "files/README.md"}
+}

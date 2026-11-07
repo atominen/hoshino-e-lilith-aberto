@@ -1,0 +1,647 @@
+{
+  "model_sha256": "10c95ea3eb9a7bb4cb8bddf6feb023250381008177ac162ce169694d05c317de",
+  "esc50_revision": "33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6",
+  "rows": [
+    {
+      "name": "1-1791-A-26.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-1791-A-26.wav",
+      "source_sha256": "dc6cd665f3d20eed6089d9593a2b776104d8671c57ce6c48e6be030c75a53643",
+      "expected": "laughter",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "laughter"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "laughter": 0.10938
+      },
+      "raw_max_scores": {
+        "laughter": 0.10938,
+        "crying": 0.0,
+        "sigh": 0.00391,
+        "cough": 0.00391,
+        "sneeze": 0.0,
+        "gasp": 0.0
+      },
+      "wall_seconds": 0.0384,
+      "cpu_seconds": 0.0422,
+      "window_max_seconds": 0.0127,
+      "window_mean_seconds": 0.0042
+    },
+    {
+      "name": "1-30039-A-26.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-30039-A-26.wav",
+      "source_sha256": "dcb1b2c6686b090bf63775eb79a64d96c243987e6ae66cbb96a4a66610b37809",
+      "expected": "laughter",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "laughter"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "laughter": 0.26172
+      },
+      "raw_max_scores": {
+        "laughter": 0.26172,
+        "crying": 0.0,
+        "sigh": 0.0,
+        "cough": 0.0,
+        "sneeze": 0.0,
+        "gasp": 0.0
+      },
+      "wall_seconds": 0.0337,
+      "cpu_seconds": 0.0403,
+      "window_max_seconds": 0.0039,
+      "window_mean_seconds": 0.0036
+    },
+    {
+      "name": "1-30043-A-26.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-30043-A-26.wav",
+      "source_sha256": "1f7b0a945875fa57a2c213e8e09afb4898675f87aafd59b2bdbfcaae9f750723",
+      "expected": "laughter",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "laughter"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "laughter": 0.10938
+      },
+      "raw_max_scores": {
+        "laughter": 0.10938,
+        "crying": 0.01172,
+        "sigh": 0.0,
+        "cough": 0.00391,
+        "sneeze": 0.00781,
+        "gasp": 0.00391
+      },
+      "wall_seconds": 0.0308,
+      "cpu_seconds": 0.0359,
+      "window_max_seconds": 0.0038,
+      "window_mean_seconds": 0.0033
+    },
+    {
+      "name": "1-33658-A-26.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-33658-A-26.wav",
+      "source_sha256": "372c161a4c9720a4ff4f14499dcfe763de12b6ab428c430dbed22bb46d1e1528",
+      "expected": "laughter",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "cough",
+        "laughter",
+        "sneeze"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [
+        "cough",
+        "sneeze"
+      ],
+      "max_scores": {
+        "cough": 0.41406,
+        "laughter": 0.33203,
+        "sneeze": 0.80078
+      },
+      "raw_max_scores": {
+        "laughter": 0.33203,
+        "crying": 0.01953,
+        "sigh": 0.00391,
+        "cough": 0.41406,
+        "sneeze": 0.80078,
+        "gasp": 0.01953
+      },
+      "wall_seconds": 0.0342,
+      "cpu_seconds": 0.0408,
+      "window_max_seconds": 0.0039,
+      "window_mean_seconds": 0.0037
+    },
+    {
+      "name": "1-36164-A-26.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-36164-A-26.wav",
+      "source_sha256": "1e458a12c75bae2b27e719449f4a8036e315da58c4c1871318f39170039bc193",
+      "expected": "laughter",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "laughter"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "laughter": 0.26172
+      },
+      "raw_max_scores": {
+        "laughter": 0.26172,
+        "crying": 0.05859,
+        "sigh": 0.01172,
+        "cough": 0.01172,
+        "sneeze": 0.01953,
+        "gasp": 0.00391
+      },
+      "wall_seconds": 0.0346,
+      "cpu_seconds": 0.0411,
+      "window_max_seconds": 0.0039,
+      "window_mean_seconds": 0.0037
+    },
+    {
+      "name": "1-36164-B-26.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-36164-B-26.wav",
+      "source_sha256": "c4ae2f7010e965c71e0564f4300c3b24b3ea32be65ece7ca885c95b8883e6cc9",
+      "expected": "laughter",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "laughter"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "laughter": 0.5
+      },
+      "raw_max_scores": {
+        "laughter": 0.5,
+        "crying": 0.05859,
+        "sigh": 0.0,
+        "cough": 0.14844,
+        "sneeze": 0.05859,
+        "gasp": 0.00781
+      },
+      "wall_seconds": 0.0336,
+      "cpu_seconds": 0.0401,
+      "window_max_seconds": 0.0037,
+      "window_mean_seconds": 0.0036
+    },
+    {
+      "name": "1-72695-A-26.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-72695-A-26.wav",
+      "source_sha256": "00e40dabc61f55f7b41edb89a6690f1dc12c69321eb14c7272fb57d286f97e9a",
+      "expected": "laughter",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "laughter",
+        "sneeze"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [
+        "sneeze"
+      ],
+      "max_scores": {
+        "laughter": 0.33203,
+        "sneeze": 0.66797
+      },
+      "raw_max_scores": {
+        "laughter": 0.33203,
+        "crying": 0.01562,
+        "sigh": 0.00391,
+        "cough": 0.08203,
+        "sneeze": 0.66797,
+        "gasp": 0.00391
+      },
+      "wall_seconds": 0.0334,
+      "cpu_seconds": 0.0398,
+      "window_max_seconds": 0.0039,
+      "window_mean_seconds": 0.0036
+    },
+    {
+      "name": "1-73123-A-26.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-73123-A-26.wav",
+      "source_sha256": "8057fd399edeefc25205d97ef8577693154507e9be4fcd7c4663eb14a6ee59f7",
+      "expected": "laughter",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "laughter"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "laughter": 0.41406
+      },
+      "raw_max_scores": {
+        "laughter": 0.41406,
+        "crying": 0.04297,
+        "sigh": 0.08203,
+        "cough": 0.03125,
+        "sneeze": 0.04297,
+        "gasp": 0.08203
+      },
+      "wall_seconds": 0.0329,
+      "cpu_seconds": 0.0393,
+      "window_max_seconds": 0.0038,
+      "window_mean_seconds": 0.0036
+    },
+    {
+      "name": "1-19111-A-24.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-19111-A-24.wav",
+      "source_sha256": "ab2afe6d0ee0de5edc1f0107448077919c6ac94dcf59243497e6fcb333685438",
+      "expected": "cough",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "cough"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "cough": 0.58594
+      },
+      "raw_max_scores": {
+        "laughter": 0.04297,
+        "crying": 0.01172,
+        "sigh": 0.01172,
+        "cough": 0.58594,
+        "sneeze": 0.01953,
+        "gasp": 0.00391
+      },
+      "wall_seconds": 0.0225,
+      "cpu_seconds": 0.024,
+      "window_max_seconds": 0.0037,
+      "window_mean_seconds": 0.0024
+    },
+    {
+      "name": "1-26143-A-21.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-26143-A-21.wav",
+      "source_sha256": "8e32762c8c48e5414dbecc2979833748cb838ba476bac75d2a512262ef842eb0",
+      "expected": "sneeze",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [],
+      "expected_detected": false,
+      "false_vocal_classes": [],
+      "max_scores": {},
+      "raw_max_scores": {
+        "laughter": 0.01562,
+        "crying": 0.00391,
+        "sigh": 0.19922,
+        "cough": 0.33203,
+        "sneeze": 0.33203,
+        "gasp": 0.04297
+      },
+      "wall_seconds": 0.0276,
+      "cpu_seconds": 0.0311,
+      "window_max_seconds": 0.0038,
+      "window_mean_seconds": 0.003
+    },
+    {
+      "name": "1-19118-A-24.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-19118-A-24.wav",
+      "source_sha256": "4fb6197f72791e50c465de8f1f715a7a3f93f7afab62dfa130f28d500303d8d9",
+      "expected": "cough",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [],
+      "expected_detected": false,
+      "false_vocal_classes": [],
+      "max_scores": {},
+      "raw_max_scores": {
+        "laughter": 0.01953,
+        "crying": 0.04297,
+        "sigh": 0.04297,
+        "cough": 0.03125,
+        "sneeze": 0.00391,
+        "gasp": 0.01172
+      },
+      "wall_seconds": 0.0229,
+      "cpu_seconds": 0.0243,
+      "window_max_seconds": 0.0037,
+      "window_mean_seconds": 0.0025
+    },
+    {
+      "name": "1-30830-A-24.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-30830-A-24.wav",
+      "source_sha256": "e0374e3191067ad9a63df3ae9157e0ca44a36f4f1fa7586982609565683f6a13",
+      "expected": "cough",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "sound"
+      ],
+      "expected_detected": false,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "sound": 0.66797
+      },
+      "raw_max_scores": {
+        "laughter": 0.01953,
+        "crying": 0.00391,
+        "sigh": 0.00391,
+        "cough": 0.19922,
+        "sneeze": 0.00781,
+        "gasp": 0.00781
+      },
+      "wall_seconds": 0.0272,
+      "cpu_seconds": 0.0298,
+      "window_max_seconds": 0.004,
+      "window_mean_seconds": 0.0029
+    },
+    {
+      "name": "1-29680-A-21.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-29680-A-21.wav",
+      "source_sha256": "4c1cdb30db5fd43eb62c17c051efaf7dde38938c0449e6bfcfb998dba92cc443",
+      "expected": "sneeze",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "sneeze"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "sneeze": 0.5
+      },
+      "raw_max_scores": {
+        "laughter": 0.01562,
+        "crying": 0.01562,
+        "sigh": 0.19922,
+        "cough": 0.26172,
+        "sneeze": 0.5,
+        "gasp": 0.05859
+      },
+      "wall_seconds": 0.029,
+      "cpu_seconds": 0.0333,
+      "window_max_seconds": 0.0038,
+      "window_mean_seconds": 0.0031
+    },
+    {
+      "name": "1-31748-A-21.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-31748-A-21.wav",
+      "source_sha256": "865652b27db628cd353379f222c01a48711f383d16b3d80bcd8493e6e8432a9e",
+      "expected": "sneeze",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "sneeze"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "sneeze": 0.85156
+      },
+      "raw_max_scores": {
+        "laughter": 0.00781,
+        "crying": 0.00391,
+        "sigh": 0.0,
+        "cough": 0.03125,
+        "sneeze": 0.85156,
+        "gasp": 0.00781
+      },
+      "wall_seconds": 0.025,
+      "cpu_seconds": 0.0274,
+      "window_max_seconds": 0.004,
+      "window_mean_seconds": 0.0027
+    },
+    {
+      "name": "1-21934-A-38.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-21934-A-38.wav",
+      "source_sha256": "8d26e40e0e382b0d2d7f6dafcb132cfe703ee3f7f32780e878fdb5a1aaffcc28",
+      "expected": null,
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [],
+      "expected_detected": null,
+      "false_vocal_classes": [],
+      "max_scores": {},
+      "raw_max_scores": {
+        "laughter": 0.0,
+        "crying": 0.0,
+        "sigh": 0.0,
+        "cough": 0.00391,
+        "sneeze": 0.0,
+        "gasp": 0.0
+      },
+      "wall_seconds": 0.0339,
+      "cpu_seconds": 0.0407,
+      "window_max_seconds": 0.0038,
+      "window_mean_seconds": 0.0037
+    },
+    {
+      "name": "1-17367-A-10.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-17367-A-10.wav",
+      "source_sha256": "d732acd2e0c7c40405968010f49f250740c86998fc416eff2ed5330fc8c89dea",
+      "expected": null,
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "sound"
+      ],
+      "expected_detected": null,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "sound": 0.98047
+      },
+      "raw_max_scores": {
+        "laughter": 0.0,
+        "crying": 0.0,
+        "sigh": 0.0,
+        "cough": 0.0,
+        "sneeze": 0.0,
+        "gasp": 0.0
+      },
+      "wall_seconds": 0.033,
+      "cpu_seconds": 0.0395,
+      "window_max_seconds": 0.0037,
+      "window_mean_seconds": 0.0036
+    },
+    {
+      "name": "1-104089-A-22.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-104089-A-22.wav",
+      "source_sha256": "2b6ec14aafc6ed98c833c5c7e56780d283f3ceaea0d4c3c142b2f49fcc2fd215",
+      "expected": null,
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "sound"
+      ],
+      "expected_detected": null,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "sound": 0.89062
+      },
+      "raw_max_scores": {
+        "laughter": 0.00391,
+        "crying": 0.0,
+        "sigh": 0.0,
+        "cough": 0.0,
+        "sneeze": 0.0,
+        "gasp": 0.0
+      },
+      "wall_seconds": 0.0344,
+      "cpu_seconds": 0.0417,
+      "window_max_seconds": 0.0042,
+      "window_mean_seconds": 0.0037
+    },
+    {
+      "name": "1-137-A-32.wav",
+      "url": "https://raw.githubusercontent.com/karolpiczak/ESC-50/33c8ce9eb2cf0b1c2f8bcf322eb349b6be34dbb6/audio/1-137-A-32.wav",
+      "source_sha256": "d68e4716f74f073be8f78f5fe8e45daf7c09b0ec0575b21f57989d803536abb3",
+      "expected": null,
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "sound"
+      ],
+      "expected_detected": null,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "sound": 0.99609
+      },
+      "raw_max_scores": {
+        "laughter": 0.0,
+        "crying": 0.0,
+        "sigh": 0.0,
+        "cough": 0.0,
+        "sneeze": 0.0,
+        "gasp": 0.0
+      },
+      "wall_seconds": 0.037,
+      "cpu_seconds": 0.0452,
+      "window_max_seconds": 0.0043,
+      "window_mean_seconds": 0.004
+    },
+    {
+      "name": "speech_whistling",
+      "url": "https://storage.googleapis.com/audioset/speech_whistling2.wav",
+      "source_sha256": "1f9db96a719cbe6dd32073d05173d06e25e71050539552f2ea4a0a26e2197e33",
+      "expected": null,
+      "duration_seconds": 4.92,
+      "windows": 9,
+      "detected": [
+        "sound"
+      ],
+      "expected_detected": null,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "sound": 0.91797
+      },
+      "raw_max_scores": {
+        "laughter": 0.00391,
+        "crying": 0.00781,
+        "sigh": 0.0,
+        "cough": 0.0,
+        "sneeze": 0.0,
+        "gasp": 0.0
+      },
+      "wall_seconds": 0.0347,
+      "cpu_seconds": 0.0413,
+      "window_max_seconds": 0.0039,
+      "window_mean_seconds": 0.0037
+    },
+    {
+      "name": "silence",
+      "url": "generated silence",
+      "source_sha256": "",
+      "expected": null,
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [],
+      "expected_detected": null,
+      "false_vocal_classes": [],
+      "max_scores": {},
+      "raw_max_scores": {
+        "laughter": 0.0,
+        "crying": 0.0,
+        "sigh": 0.0,
+        "cough": 0.0,
+        "sneeze": 0.0,
+        "gasp": 0.0
+      },
+      "wall_seconds": 0.0201,
+      "cpu_seconds": 0.0201,
+      "window_max_seconds": 0.0023,
+      "window_mean_seconds": 0.0022
+    },
+    {
+      "name": "laughter_volume_5pct",
+      "url": "gain0.05 from 1-1791-A-26.wav",
+      "source_sha256": "",
+      "expected": "laughter",
+      "duration_seconds": 5.0,
+      "windows": 9,
+      "detected": [
+        "laughter"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "laughter": 0.26172
+      },
+      "raw_max_scores": {
+        "laughter": 0.26172,
+        "crying": 0.00391,
+        "sigh": 0.00391,
+        "cough": 0.00781,
+        "sneeze": 0.00391,
+        "gasp": 0.00781
+      },
+      "wall_seconds": 0.0359,
+      "cpu_seconds": 0.0359,
+      "window_max_seconds": 0.0056,
+      "window_mean_seconds": 0.0039
+    },
+    {
+      "name": "laughter_400ms",
+      "url": "400ms peak-energy crop at sample6400 from 1-1791-A-26.wav",
+      "source_sha256": "",
+      "expected": "laughter",
+      "duration_seconds": 0.975,
+      "windows": 1,
+      "detected": [
+        "laughter"
+      ],
+      "expected_detected": true,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "laughter": 0.10938
+      },
+      "raw_max_scores": {
+        "laughter": 0.10938,
+        "crying": 0.00391,
+        "sigh": 0.0,
+        "cough": 0.03125,
+        "sneeze": 0.01172,
+        "gasp": 0.00391
+      },
+      "wall_seconds": 0.0054,
+      "cpu_seconds": 0.0054,
+      "window_max_seconds": 0.0053,
+      "window_mean_seconds": 0.0053
+    },
+    {
+      "name": "laughter_and_speech_mix",
+      "url": "50/50 PCM mix of references above",
+      "source_sha256": "",
+      "expected": "laughter",
+      "duration_seconds": 4.92,
+      "windows": 9,
+      "detected": [
+        "sound"
+      ],
+      "expected_detected": false,
+      "false_vocal_classes": [],
+      "max_scores": {
+        "sound": 0.91797
+      },
+      "raw_max_scores": {
+        "laughter": 0.05859,
+        "crying": 0.03125,
+        "sigh": 0.0,
+        "cough": 0.0,
+        "sneeze": 0.00391,
+        "gasp": 0.0
+      },
+      "wall_seconds": 0.0377,
+      "cpu_seconds": 0.0429,
+      "window_max_seconds": 0.0057,
+      "window_mean_seconds": 0.0041
+    }
+  ],
+  "notice": "Amostra exploratória pequena, não benchmark/garantia de recall em microfone real; mistura/volume/corte são transformações declaradas.",
+  "peak_rss_kib": 80292
+}

@@ -1,0 +1,274 @@
+{
+  "tested_at": "2026-10-06T07:26:33.021193-03:00",
+  "scope": "real_workers_and_http",
+  "capture": false,
+  "playback": false,
+  "mental_memories": "untouched",
+  "message_and_job_databases": "temporary",
+  "turns": [
+    {
+      "entity": "hoshino",
+      "id": "audio-7f9f08a964d343b4b668",
+      "result": {
+        "audio_id": "audio-7f9f08a964d343b4b668",
+        "sample_rate": 24000,
+        "duration_seconds": 6.96,
+        "voice": "Serena"
+      },
+      "elapsed_seconds": 42.18,
+      "bytes": 334124,
+      "sha256": "eb7496c28d568f6d20cb85ecc20ddd45c092d7aa46aa3917a5d1fc78586a9d43",
+      "duration_seconds": 6.96,
+      "worker_pid": 19919
+    },
+    {
+      "entity": "lilith",
+      "id": "audio-6d94c42e20fc4786921c",
+      "result": {
+        "audio_id": "audio-6d94c42e20fc4786921c",
+        "sample_rate": 24000,
+        "duration_seconds": 7.12,
+        "voice": "Vivian"
+      },
+      "elapsed_seconds": 38.159,
+      "bytes": 341804,
+      "sha256": "d32f0b6362443248459e0ecab068ac59fa0247e906278d0fe1ff1662d8ea9d9c",
+      "duration_seconds": 7.12,
+      "worker_pid": 19919
+    }
+  ],
+  "limitations": [
+    "Áudio sintético não comprova microfone físico, ruído ou sotaque natural.",
+    "Papel usuario atribuído pela rota de microfone não é identificação biométrica."
+  ],
+  "state_before": {
+    "backend": "local_shared",
+    "asr": {
+      "engine": "faster-whisper",
+      "model": "large-v3",
+      "device": "cpu",
+      "worker_alive": false,
+      "identity": "usuario por origem do microfone, não identificação vocal"
+    },
+    "tts": {
+      "engine": "qwen3_tts",
+      "device": "cpu",
+      "voices_ready": true,
+      "subjective_voice_approval": false,
+      "latency_note": "Qwen CPU pode levar cerca de cinco vezes a duração da fala; não é tempo real.",
+      "worker_alive": false
+    },
+    "voices": {
+      "hoshino": {
+        "id": "Serena",
+        "label": "Serena · candidata feminina, português multilíngue"
+      },
+      "lilith": {
+        "id": "Vivian",
+        "label": "Vivian · candidata feminina, português multilíngue"
+      }
+    },
+    "sources": [
+      {
+        "id": "alsa_output.usb-3142_fifine_Headset-00.analog-stereo.monitor",
+        "label": "(null)",
+        "kind": "output_mix",
+        "application": null,
+        "isolated_capture": false
+      },
+      {
+        "id": "alsa_input.usb-3142_fifine_Headset-00.mono-fallback",
+        "label": "fifine Headset Mono",
+        "kind": "microphone",
+        "application": null,
+        "isolated_capture": false
+      },
+      {
+        "id": "sink-input:212",
+        "kind": "application_stream",
+        "application": "Firefox",
+        "label": "Firefox",
+        "isolated_capture": false
+      }
+    ],
+    "output": {
+      "available": true,
+      "sources": [
+        {
+          "id": "alsa_output.usb-3142_fifine_Headset-00.analog-stereo.monitor",
+          "label": "(null)",
+          "kind": "output_mix",
+          "application": null,
+          "isolated_capture": false
+        },
+        {
+          "id": "alsa_input.usb-3142_fifine_Headset-00.mono-fallback",
+          "label": "fifine Headset Mono",
+          "kind": "microphone",
+          "application": null,
+          "isolated_capture": false
+        }
+      ],
+      "streams": [
+        {
+          "id": "sink-input:212",
+          "kind": "application_stream",
+          "application": "Firefox",
+          "label": "Firefox",
+          "isolated_capture": false
+        }
+      ],
+      "default_output": "alsa_output.usb-3142_fifine_Headset-00.analog-stereo",
+      "physical_microphone_detected": true,
+      "application_capture_isolated": false,
+      "detail": "Fontes do sistema são separadas de streams de aplicativos; monitores misturam a saída do sink."
+    },
+    "queue": 0
+  },
+  "transcription": {
+    "id": "audio-047855e2582a4bebacc3",
+    "entity": "lilith",
+    "kind": "audio_asr",
+    "status": "done",
+    "result": {
+      "text": "Olá, Gustavo. A imagem está pronta. Podemos conversar enquanto a outra tarefa continua.",
+      "language": "pt",
+      "segments": [
+        {
+          "start": 0.14,
+          "end": 7.14,
+          "text": "Olá, Gustavo. A imagem está pronta. Podemos conversar enquanto a outra tarefa continua.",
+          "speaker": "usuario",
+          "no_speech_probability": 0.0014281445182859898,
+          "average_log_probability": -0.2148506212234497
+        }
+      ],
+      "source": "browser_microphone",
+      "speaker": "usuario",
+      "speaker_basis": "source_role",
+      "metadata": {
+        "duration_seconds": 7.12,
+        "input_sample_rate": 24000,
+        "input_channels": 1,
+        "input_sample_width": 2,
+        "engine": "faster-whisper",
+        "model": "large-v3",
+        "device": "cpu",
+        "compute_type": "int8",
+        "sample_rate": 16000,
+        "vad_filter": true,
+        "rms_before_normalization": 0.0796568,
+        "processing_seconds": 11.204,
+        "filtered_segments": 0,
+        "language_basis": "configured",
+        "language_probability": null,
+        "speaker_basis": "source_role",
+        "speaker_identification_performed": false,
+        "diarization_performed": false,
+        "diarization_available": false,
+        "diarization_reason": "primary_microphone_single_source",
+        "application": null,
+        "content": "speech"
+      }
+    },
+    "error": null,
+    "elapsed_seconds": 12.059,
+    "input_is_synthetic": true,
+    "tts_released_before_asr": true,
+    "message_not_auto_sent": true
+  },
+  "cancelled": {
+    "id": "audio-c3839f8b190c47dba076",
+    "entity": "hoshino",
+    "kind": "audio_asr",
+    "status": "interrupted",
+    "result": null,
+    "error": "Operação de áudio interrompida."
+  },
+  "state_after": {
+    "backend": "local_shared",
+    "asr": {
+      "engine": "faster-whisper",
+      "model": "large-v3",
+      "device": "cpu",
+      "worker_alive": true,
+      "identity": "usuario por origem do microfone, não identificação vocal"
+    },
+    "tts": {
+      "engine": "qwen3_tts",
+      "device": "cpu",
+      "voices_ready": true,
+      "subjective_voice_approval": false,
+      "latency_note": "Qwen CPU pode levar cerca de cinco vezes a duração da fala; não é tempo real.",
+      "worker_alive": false
+    },
+    "voices": {
+      "hoshino": {
+        "id": "Serena",
+        "label": "Serena · candidata feminina, português multilíngue"
+      },
+      "lilith": {
+        "id": "Vivian",
+        "label": "Vivian · candidata feminina, português multilíngue"
+      }
+    },
+    "sources": [
+      {
+        "id": "alsa_output.usb-3142_fifine_Headset-00.analog-stereo.monitor",
+        "label": "(null)",
+        "kind": "output_mix",
+        "application": null,
+        "isolated_capture": false
+      },
+      {
+        "id": "alsa_input.usb-3142_fifine_Headset-00.mono-fallback",
+        "label": "fifine Headset Mono",
+        "kind": "microphone",
+        "application": null,
+        "isolated_capture": false
+      },
+      {
+        "id": "sink-input:212",
+        "kind": "application_stream",
+        "application": "Firefox",
+        "label": "Firefox",
+        "isolated_capture": false
+      }
+    ],
+    "output": {
+      "available": true,
+      "sources": [
+        {
+          "id": "alsa_output.usb-3142_fifine_Headset-00.analog-stereo.monitor",
+          "label": "(null)",
+          "kind": "output_mix",
+          "application": null,
+          "isolated_capture": false
+        },
+        {
+          "id": "alsa_input.usb-3142_fifine_Headset-00.mono-fallback",
+          "label": "fifine Headset Mono",
+          "kind": "microphone",
+          "application": null,
+          "isolated_capture": false
+        }
+      ],
+      "streams": [
+        {
+          "id": "sink-input:212",
+          "kind": "application_stream",
+          "application": "Firefox",
+          "label": "Firefox",
+          "isolated_capture": false
+        }
+      ],
+      "default_output": "alsa_output.usb-3142_fifine_Headset-00.analog-stereo",
+      "physical_microphone_detected": true,
+      "application_capture_isolated": false,
+      "detail": "Fontes do sistema são separadas de streams de aplicativos; monitores misturam a saída do sink."
+    },
+    "queue": 0
+  },
+  "status": "passed",
+  "workers_stopped": true
+}

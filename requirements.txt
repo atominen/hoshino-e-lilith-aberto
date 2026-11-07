@@ -1,0 +1,49 @@
+# Dependências da Hoshino.
+#   pip install -r requirements.txt
+#
+# O projeto foi escrito para não morrer por falta de pacote: quase tudo aqui é
+# importado de forma tolerante e vira "capacidade indisponível" em vez de erro
+# na inicialização. Os blocos abaixo dizem o que você perde ao pular cada um.
+
+# ---------------------------------------------------------------- essenciais
+# Sem estes a Hoshino não abre.
+textual>=0.50          # a interface de terminal
+requests>=2.31         # conversa com o Ollama
+
+# ------------------------------------------------------------------ memória
+# Sem chromadb ela ainda roda, mas perde a busca por significado: a memória
+# passa a ser só o SQLite, sem "lembrar do que tem a ver com isso".
+chromadb>=0.4
+
+# --------------------------------------------------------------------- web
+# Sem estes, pesquisar na internet devolve "busca indisponível".
+ddgs>=9.16.0
+beautifulsoup4>=4.12
+
+# -------------------------------------------------------------------- visão
+# Captura de tela e leitura de imagem anexada (o modelo Qwen3.5 enxerga nativo).
+mss>=9.0
+Pillow>=10.0
+
+# ---------------------------------------------------------------------- voz
+# Sem estes ela fica muda (continua escrevendo normalmente).
+edge-tts>=6.1
+pygame>=2.5
+
+# --------------------------------------------------------------- microfone
+# Escuta por voz. numpy é usado pelo VAD (detecção de fala) e é leve;
+# o resto é pesado, instale só se for usar o microfone de verdade.
+numpy>=1.24
+sounddevice>=0.4       # captura de áudio (precisa do libportaudio2 no sistema)
+faster-whisper>=1.0    # transcrição rápida; alternativa: openai-whisper
+
+# ----------------------------------------------------------------- discord
+# Só para a ponte do Discord (integracoes/discord_bot.py), que roda em
+# processo separado. A Hoshino principal funciona sem isto.
+discord.py>=2.3
+
+pynput>=1.7.6       # atalho global de push-to-talk (X11)
+
+# ------------------------------------------------------------- navegador
+# Controle de navegador via Playwright; o código instala o Chromium sob demanda.
+playwright>=1.59

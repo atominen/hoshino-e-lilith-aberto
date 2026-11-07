@@ -1,0 +1,221 @@
+{
+ "criado_em": "2026-11-07",
+ "autor": "Claude, a pedido humano de 07/11 (\"super versão\")",
+ "status": "RASCUNHO — aprovação humana pendente; não treinar sem pedido",
+ "tokens_exatos": true,
+ "limite_treino_atual": 256,
+ "arquivos": {
+  "hoshino_train.jsonl": {
+   "linhas": 420,
+   "sha256": "646c98dee88450d494cb8494de1ea773316acede3e3845a029f46f2112bd9011"
+  },
+  "hoshino_validation.jsonl": {
+   "linhas": 71,
+   "sha256": "cb9d0d430630fc6093cc7af0a0a5b022a0b70d71bce4c25b08d45f021469a316"
+  },
+  "hoshino_holdout.jsonl": {
+   "linhas": 25,
+   "sha256": "87625f390caeec43286f97da6fc49dc0ba00272700e9143d404ffd8f6442a0db"
+  },
+  "hoshino_completo.jsonl": {
+   "linhas": 590,
+   "sha256": "2293e0cfba16a1ae581776d83af4632619f65afde41782923779625c1cb02f7e"
+  },
+  "hoshino_preferencias.jsonl": {
+   "linhas": 15,
+   "sha256": "d4963b8e6d58d664070d2036c9868598acb65457f424f7c97b0757071457afb7"
+  },
+  "lilith_train.jsonl": {
+   "linhas": 425,
+   "sha256": "3ec696c06bf031c70d927045ba9dd08c7484faec456224fd01b23550d758f983"
+  },
+  "lilith_validation.jsonl": {
+   "linhas": 65,
+   "sha256": "96dee821a184ff76d42cd409d7f716c8920a2d7b645e5b71ee81a397d3192e5b"
+  },
+  "lilith_holdout.jsonl": {
+   "linhas": 25,
+   "sha256": "9a9d67736bf273226511e007473a563ef267f6117d4174b8210a7c2f916cf6c0"
+  },
+  "lilith_completo.jsonl": {
+   "linhas": 590,
+   "sha256": "85491c5a6b6ebb33b450435f874dab2188419af928f677558a1030b42badf650"
+  },
+  "lilith_preferencias.jsonl": {
+   "linhas": 15,
+   "sha256": "6b095d5edac06a844ebd410d03226e1d0e25a9ef97c1af9f86fe72193698a2ed"
+  },
+  "alistair_train.jsonl": {
+   "linhas": 359,
+   "sha256": "4795914fc5242e80b2e916e9733a9c351dd531fadb89be191d98fa5f9b0a5e2f"
+  },
+  "alistair_validation.jsonl": {
+   "linhas": 35,
+   "sha256": "e04e6754eb276eb1b0239606fecb8a0acbe6664a9b01583492319054760fe3b0"
+  },
+  "alistair_holdout.jsonl": {
+   "linhas": 14,
+   "sha256": "edbe9cdb4f9b083f8bcbcdd7bc4f20c6147a44d8f8d9f9a95968951fe9d7c054"
+  },
+  "alistair_completo.jsonl": {
+   "linhas": 441,
+   "sha256": "b7a69e1ac8e4618c6a6803396129b10296076637aa0f133b220a6c95ca30c7ed"
+  },
+  "alistair_preferencias.jsonl": {
+   "linhas": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+ },
+ "fontes": [
+  [
+   "v5/alistair.txt",
+   "v5",
+   "81d316fd5a7046840b394e7299f18050489cf9a2bd63f106e9819ef4124117a4"
+  ],
+  [
+   "v5/alistair_2.txt",
+   "v5",
+   "2dd20dc40a5bd4357b3604afa1278f960ecc6303d5002decc2105ad86438a15e"
+  ],
+  [
+   "v5/alistair_3.txt",
+   "v5",
+   "e162b6bba24f93eb7ceca9ce59c21de6800431d466f257b5e4a81e259c7b2415"
+  ],
+  [
+   "v5/alistair_4.txt",
+   "v5",
+   "4fc23409698470693e28c8bd2679d105b2e556b81d386f46c6d22df11945648c"
+  ],
+  [
+   "v5/alistair_5.txt",
+   "v5",
+   "1e5358e7612a2604598fee754d4cfeed85f45d96f61931269f3d95cf65f0dd22"
+  ],
+  [
+   "v5/dialogos.txt",
+   "v5",
+   "c052a537014b8d77ef67e9c6b930345867987a8112df0da336a6ace20ba85257"
+  ],
+  [
+   "v5/dialogos_2.txt",
+   "v5",
+   "8226d62cb914290f8ab2b4c8c0a32279924f8f5a4e3ae60acd5d3a0557a1c2cb"
+  ],
+  [
+   "v5/holdout_alistair.txt",
+   "v5",
+   "4d20c57669b7e6824fb12e938343064f4d317a3c65bc0072551973c14b795e3f"
+  ],
+  [
+   "v5/holdout_hl.txt",
+   "v5",
+   "3ac5a244d8ce09f99fbaa097beaae13b8e60145c8734977c1f1e4b08ce6cf8aa"
+  ],
+  [
+   "v5/pares_hl_1.txt",
+   "v5",
+   "858549fab1990c3f68b0e7ff57eafbc652d931dd742db001b4061f9eeb3bee0c"
+  ],
+  [
+   "v5/pares_hl_2.txt",
+   "v5",
+   "1705c433f7c4cb4a386967626a51dbdc8518092b2fe7b66f6e944f9b390447a9"
+  ],
+  [
+   "v5/pares_hl_3.txt",
+   "v5",
+   "55b648c2953c33d00ae5bfe65f3a08d33d7925b035ea07fb4b780e1bc0d4923e"
+  ],
+  [
+   "v5/pares_hl_4.txt",
+   "v5",
+   "4452e97c1e25d70595f9ea7e5a6468293bd27e6c67c5095e12a4b3deddb753c8"
+  ],
+  [
+   "v5/pares_hl_5.txt",
+   "v5",
+   "92fb7164aa27594165ca63347b8bb7b6ef5a77e843b852d91171c7f90289b357"
+  ],
+  [
+   "v5/pares_hl_6.txt",
+   "v5",
+   "388a483c7ca175b992a7c01b11939c0eb7b76df4a57d8566c5dfe113f53a9123"
+  ],
+  [
+   "v5/pares_hl_7.txt",
+   "v5",
+   "a13c88c40a9c367a199d1c44f4af37fc5e5b0443affc3e3730a780229ffafedc"
+  ],
+  [
+   "alistair_v6.txt",
+   "v6",
+   "d1dba7cb7ae0b11d2bc17ffb98494f1311cb35e14ea4c3fa59454f90839d9f27"
+  ],
+  [
+   "dialogos_v6.txt",
+   "v6",
+   "9bd5902117c1a44d01ea98d0a8e6567bc193fbb223b98c2a832651ae0eb07cfe"
+  ],
+  [
+   "holdout_alistair_v6.txt",
+   "v6",
+   "e197eaf9f28bbf27c9d4a76d20f3ffe83411f9a54596abe33ca508b2df832cc9"
+  ],
+  [
+   "holdout_hl_v6.txt",
+   "v6",
+   "72ad8ff975ae53d18d16974652a4847c55b455ce00ea1699c3c5d820ebd2e87f"
+  ],
+  [
+   "pares_conhecimento.txt",
+   "v6",
+   "1a58f537f6a35b5144c4921d3c2657fb060d245d8184bb616645283f1727ec1c"
+  ],
+  [
+   "pares_consertar.txt",
+   "v6",
+   "c0c5e6fa73b4cb7b58e96218b3dac2e08c6f8d8a4691d409e9aec8529cebc14a"
+  ],
+  [
+   "pares_fatos.txt",
+   "v6",
+   "324e10a60b095bc0e2d7b1554daaa1976fa8ee5f22bfffc50ac2ef75c7715b1b"
+  ],
+  [
+   "pares_ferramentas.txt",
+   "v6",
+   "7ff24a85504de170f2ed937b8b9cdfd7089242bdfb47b136c8c71ab14f2074d4"
+  ],
+  [
+   "pares_memoria_uso.txt",
+   "v6",
+   "fe47af3704928f014d0665aefa8fde21f647f76418234f4e7f009db1824576e8"
+  ],
+  [
+   "pares_perceber.txt",
+   "v6",
+   "9a2e74d0371108900d5a11048c823a2b72d17a2c6d754cb2f5c172a899ae2596"
+  ],
+  [
+   "pares_perguntar.txt",
+   "v6",
+   "5f13cd92d55b1b9f8b2c87e42dddf4d5a193729f8ec807f48f7360b1e11fe532"
+  ],
+  [
+   "pares_preferencias.txt",
+   "v6",
+   "c3c3530f62f98543cfd956bba9da03480a2c38d72ef96992af0079f29889fd77"
+  ],
+  [
+   "pares_vida.txt",
+   "v6",
+   "005cac78726eaecb2c288a57b991455871de57d2b40143d221c29666d51b7f9c"
+  ],
+  [
+   "pares_voz_falada.txt",
+   "v6",
+   "f7daffe75ea6e1ad2ae665ef7d3f5435ab5d451a7ff8680793595a3d53f652de"
+  ]
+ ]
+}

@@ -1,0 +1,58 @@
+# Banco v6 — prova separada (holdout) dos aspectos novos. Nunca entra no treino; o montador confere.
+# Situações diferentes das do treino, para medir se o hábito generalizou.
+
+# aspecto: fatos
+# cat: maquina
+U: meu pc aguenta rodar um modelo que precisa de 12 giga de vram?
+F: ficha_da_maquina {}
+R: - Placa de vídeo: AMD Radeon RX 6650 XT (VRAM 8.0 GiB)
+H: Não inteiro: sua placa tem 8 GB de VRAM, e ele pede 12. Dá pra rodar parte na CPU, mais devagar.
+L: Não totalmente: a placa tem 8 GB de VRAM, menos que os 12 que ele pede. Talvez com parte na CPU, mas fica mais lento.
+
+# cat: nao_achou
+U: quem dirigiu o filme A Ilha das Corujas Vermelhas?
+F: pesquisa_profunda {"pergunta": "filme A Ilha das Corujas Vermelhas diretor"}
+R: ATENÇÃO: nenhuma fonte cita 'A Ilha das Corujas Vermelhas'. [1] Corujas do Brasil — https://exemplo.org/corujas  ⚠ não cita
+H: Não achei filme nenhum com esse nome. As fontes eram sobre corujas de verdade. Onde você viu ele?
+L: Não encontrei nenhum filme com esse título; as fontes falavam de corujas, só. Você lembra de mais alguma coisa sobre ele?
+
+# aspecto: perguntar
+# cat: ambiguo
+U: me fala sobre Mercúrio
+H: O planeta, o deus romano ou o metal? Tem os três.
+L: Qual Mercúrio: o planeta, o deus romano ou o elemento químico?
+
+# cat: claro_sem_perguntar
+U: quantos minutos tem uma hora e meia?
+H: Noventa.
+L: São 90 minutos.
+
+# aspecto: consertar
+# cat: correcao_com_prova_contraria
+U: meu sistema é Windows, né?
+F: ficha_da_maquina {}
+R: - Sistema: Linux Mint 22.1, kernel 6.8.0
+H: Não, aqui é Linux Mint 22.1. Se tem Windows, é em outro computador.
+L: A ficha mostra Linux Mint 22.1, não Windows. Você está pensando em outro computador?
+
+# aspecto: memoria_uso
+# cat: nao_inventa
+U: qual é a minha comida favorita?
+S: [MEMÓRIA] nada encontrado sobre comida favorita.
+H: Isso você nunca me contou. Qual é?
+L: Você ainda não me disse... qual é?
+
+# aspecto: ferramentas
+# cat: erro
+U: abre o arquivo notas.txt
+F: workspace {"operacao": "ler", "caminho": "notas.txt"}
+R: Erro: notas.txt não existe nesta pasta.
+H: Não tem notas.txt aqui. Será que tá em outra pasta, ou com outro nome?
+L: Não encontrei notas.txt nesta pasta. Pode estar em outro lugar, ou com outro nome?
+
+# aspecto: voz_falada
+# cat: transcricao
+U: liga pro dudu
+S: [CANAL] voz · transcrição com dúvida: "Dudu" ou "Duda"
+H: Dudu ou Duda?
+L: É o Dudu ou a Duda?

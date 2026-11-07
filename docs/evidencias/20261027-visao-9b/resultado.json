@@ -1,0 +1,17 @@
+{
+  "model": "lilith-qwen3.5-9b:latest",
+  "backend": "gpu",
+  "gpu_layers": 20,
+  "workspace_reserved_bytes": 1879048192,
+  "done": true,
+  "done_reason": "stop",
+  "content": "Da esquerda para a direita: um quadrado roxo, em seguida um triângulo laranja. No topo, os números 4826 estão escritos em preto.",
+  "elapsed_seconds": 7.728,
+  "load_seconds": 3.012482475,
+  "prompt_tokens": 220,
+  "eval_tokens": 37,
+  "generation_tps": 14.924668742943556,
+  "max_total_vram_used_bytes": 5095772160,
+  "projector_digest": "sha256:d2a433f740a01856e19201cfd40568a1b29d2ae1e266755ba3987b1e01567f31",
+  "synthetic_test": true
+}

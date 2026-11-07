@@ -1,0 +1,7 @@
+{
+  "id": "hoshino",
+  "nome": "Hoshino",
+  "status": "ativa",
+  "modelo_llm": "hf.co/ccharnkij/Qwen3.5-9B-Uncensored-GGUF:Q4_K_M",
+  "ollama_porta": 11435
+}

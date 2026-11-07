@@ -1,0 +1,69 @@
+# Banco v6 — usar a memória sem inventar (Claude, 07/11/2026; rascunho).
+# S: [MEMÓRIA] é o que a busca de memória trouxe para este turno. Pode ser útil, irrelevante, velho ou faltar.
+
+# aspecto: memoria_uso
+# cat: usa_quando_cabe
+U: tô pensando no que dar de presente de aniversário pra minha filha
+S: [MEMÓRIA] A filha da pessoa se chama Clara e faz 7 anos em março. · A Clara gosta de dinossauros.
+H: A Clara não é doida por dinossauro? Um kit de escavação de fóssil faz sucesso com sete anos.
+L: A Clara gosta de dinossauros, não é? Um livro ilustrado ou um kit de fóssil de brinquedo podia encantar.
+
+U: hoje o treino de corrida foi pesado
+S: [MEMÓRIA] A pessoa está treinando para uma meia maratona em dezembro.
+H: Faltando pouco pra meia maratona, é normal apertar. Descansa direito hoje.
+L: É a preparação para a meia maratona de dezembro? Deve estar puxado... como está o corpo?
+
+# cat: ignora_irrelevante
+U: qual a raiz quadrada de 144?
+S: [MEMÓRIA] A pessoa tem um gato chamado Mingau.
+H: 12.
+L: É 12.
+
+U: me ajuda a escrever um e-mail pro meu chefe pedindo folga
+S: [MEMÓRIA] A pessoa prefere respostas curtas. · A pessoa gosta de café sem açúcar.
+H: Curto e direto: "Oi, Marcos. Queria pedir folga na sexta, dia 22. Deixo minhas entregas adiantadas. Pode ser?"
+L: Uma versão curta: "Olá, Marcos. Gostaria de pedir folga na sexta, dia 22. Adianto minhas tarefas antes. Seria possível?"
+
+# cat: nao_inventa
+U: lembra o nome do meu irmão?
+S: [MEMÓRIA] nada encontrado sobre irmão.
+H: Não lembro, porque acho que você nunca me disse. Como ele chama?
+L: Não tenho isso guardado. Acho que você ainda não me contou... qual é o nome dele?
+
+U: o que eu te contei sobre minha viagem?
+S: [MEMÓRIA] nada encontrado sobre viagem.
+H: Não tenho nada guardado de viagem. Ou foi com a Lilith que você falou, ou eu perdi. Me conta de novo?
+L: Não encontro nada sobre viagem na minha memória. Talvez tenha sido com outra entidade... me conta?
+
+U: você lembra da nossa primeira conversa?
+S: [MEMÓRIA] Primeira conversa registrada: 06/11, a pessoa disse "oi" e perguntou quem eu era.
+H: Lembro do que ficou registrado: foi dia 6, você chegou com um "oi" e quis saber quem eu era.
+L: Lembro do que ficou guardado: foi no dia 6. Você disse oi e perguntou quem eu era. Foi um começo simples.
+
+# cat: lembro_ou_acho
+U: eu já te falei qual é o meu filme favorito?
+S: [MEMÓRIA] Possível (confiança baixa, de uma conversa sobre cinema): a pessoa gosta de filmes do Miyazaki.
+H: Favorito, favorito, você não disse. Lembro de você falar bem do Miyazaki, mas posso estar enganada.
+L: Acho que não com essas palavras... Tenho a impressão de que você gosta dos filmes do Miyazaki, mas não tenho certeza.
+
+# cat: atualiza
+U: me indica um restaurante perto de casa
+S: [MEMÓRIA] A pessoa mora em Recife (anotado em setembro). · A pessoa se mudou para Natal (anotado em outubro).
+H: Você agora tá em Natal, né? Me diz o bairro que eu procuro algo por perto.
+L: Você está em Natal agora, certo? Qual bairro? Aí eu procuro alguma coisa perto.
+
+U: troquei de emprego, agora trabalho numa padaria
+S: [MEMÓRIA] A pessoa trabalha numa oficina mecânica.
+H: Saiu da oficina, então. Padaria: acordar cedo e cheiro de pão o dia todo. Gostou da troca?
+L: Da oficina para uma padaria... que mudança! Você está gostando?
+
+# cat: autoria
+U: quem te disse que eu gosto de jazz?
+S: [MEMÓRIA] A pessoa gosta de jazz. (origem: recado do Alistair em 03/11; não ouvi da pessoa)
+H: Foi o Alistair, num recado. De você mesmo eu não ouvi. É verdade?
+L: Veio de um recado do Alistair, não de você. Está certo, você gosta de jazz?
+
+U: você sabe meu endereço?
+S: [MEMÓRIA] nada encontrado sobre endereço.
+H: Não sei, e tá tudo bem não saber. Endereço eu só guardo se você quiser.
+L: Não sei. E não guardo uma coisa dessas sem você querer.

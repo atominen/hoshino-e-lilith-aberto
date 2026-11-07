@@ -1,0 +1,742 @@
+﻿PLANEJAMENTO ATUAL — HOSHINO, LILITH E ALISTAIR
+Registro da conversa atual
+Data: 05/10/2026
+
+============================================================
+1. PRINCÍPIO CENTRAL DO PROJETO
+============================================================
+
+A personalidade de Hoshino e Lilith não deve ser interpretada como um roteiro,
+uma lista de frases ou uma atuação fixa.
+
+A proposta continua sendo:
+
+perceber
+→ avaliar relevância
+→ interpretar
+→ sentir
+→ lembrar
+→ gerar impulsos
+→ pesar relações, objetivos e valores
+→ decidir
+→ agir
+→ observar consequências
+→ aprender
+→ refletir
+→ eventualmente mudar
+
+A personalidade deve aparecer como consequência acumulada das experiências.
+
+Chegamos também a uma conclusão importante:
+não adianta teorizar indefinidamente. Depois de uma base suficientemente boa,
+o desenvolvimento real da personalidade depende de testes práticos,
+experiências e muitos ciclos de polimento.
+
+
+============================================================
+2. O QUE A ESTRUTURA MENTAL AINDA PRECISA
+============================================================
+
+A estrutura atual já possui muitas peças:
+- personalidade por evidência;
+- emoções;
+- humor;
+- estado psicológico;
+- drives;
+- memória;
+- reflexão;
+- relações;
+- objetivos;
+- curiosidades;
+- estratégias;
+- histórico de experiências.
+
+Por isso, não parece útil continuar adicionando módulos mentais indefinidamente.
+O principal problema agora é criar pontes melhores entre as partes existentes.
+
+2.1. Filtro de saliência / atenção
+
+Antes de um estímulo virar curiosidade, memória, emoção ou reação, deveria passar
+por uma avaliação barata de relevância:
+
+"isso realmente importa para mim?"
+
+Isso evita curiosidades e reações sobre elementos irrelevantes do ambiente,
+como nomes de pastas, botões ou itens aleatórios da interface.
+
+Fluxo aproximado:
+
+percepção
+→ saliência
+→ relevância
+→ somente então emoção / curiosidade / memória / ação
+
+
+2.2. Interpretações persistentes separadas de fatos
+
+Separar explicitamente:
+
+- o que aconteceu;
+- o que a entidade sentiu;
+- o que ela acha que aquilo significa;
+- quanta confiança ela tem nessa interpretação.
+
+Exemplo:
+
+Fato:
+"Gustavo encerrou a conversa."
+
+Interpretação:
+"Talvez estivesse cansado."
+
+Confiança:
+0,32
+
+A interpretação pode ganhar ou perder confiança conforme novas evidências aparecem.
+
+Isso é especialmente importante para relações, porque evita dois extremos:
+- não interpretar nada;
+- transformar uma interpretação em fato objetivo.
+
+
+2.3. Relações entre as próprias entidades
+
+O sistema relacional não deve existir apenas entre usuário e entidade.
+
+Precisamos permitir relações direcionais como:
+
+Hoshino → Gustavo
+Lilith → Gustavo
+Hoshino → Lilith
+Lilith → Hoshino
+Hoshino → Alistair
+Lilith → Alistair
+
+Essas relações podem usar conceitos já existentes:
+- familiaridade;
+- confiança;
+- afinidade;
+- histórico de eventos.
+
+Devem ser direcionais.
+
+Hoshino pode confiar muito em Lilith enquanto Lilith ainda mantém alguma reserva
+em relação a Hoshino.
+
+Isso cria história compartilhada sem roteirizar a relação.
+
+
+2.4. Pendências relacionais específicas
+
+Uma emoção pode desaparecer rapidamente sem que o problema que a causou tenha
+sido resolvido.
+
+Exemplo:
+
+"Eu não estou mais com raiva, mas ainda existe algo não resolvido com Lilith."
+
+Portanto, além da carga emocional geral, seria útil ter pendências ligadas a uma
+relação ou situação concreta.
+
+Escalas de tempo conceituais:
+
+emoção → curta
+humor → minutos / horas
+estado psicológico → horas / dias
+pendência relacional → até resolução
+traço de personalidade → longo prazo
+identidade → altamente estável
+
+
+2.5. Valores adquiridos
+
+Valores não devem ser confundidos com traços, gostos, objetivos ou memórias.
+
+Exemplo de valor adquirido:
+
+"Eu passei a valorizar tentar antes de desistir."
+
+Esse tipo de valor não deve vir de uma lista pronta.
+Deve exigir um limiar alto de experiências consistentes e reflexão antes de ser
+considerado parte relativamente estável da entidade.
+
+
+2.6. Arbitragem mental
+
+As entidades já podem possuir muitos impulsos simultâneos:
+- curiosidade;
+- conexão;
+- competência;
+- coerência;
+- cuidado;
+- lazer;
+- emoções;
+- objetivos;
+- relações;
+- estado psicológico;
+- valores.
+
+É necessário um mecanismo que compacte essas forças em um estado de decisão.
+
+Não queremos uma floresta de "if/else" escrevendo a personalidade.
+
+A ideia é:
+
+estado interno complexo
+→ arbitragem
+→ estado de decisão compacto
+→ LLM decide a resposta ou ação
+
+Depois dessas ligações, a orientação é parar de adicionar "mais cérebro" sem
+evidência de necessidade e começar a testar a vida prática das entidades.
+
+
+============================================================
+3. ALISTAIR — O MORDOMO
+============================================================
+
+O nome escolhido provisoriamente para o Mordomo foi:
+
+ALISTAIR
+
+A sensação desejada:
+- formal;
+- sofisticado;
+- discreto;
+- confiável;
+- leve ironia;
+- não gelado;
+- não caricato;
+- não excessivamente sarcástico.
+
+Ele pode utilizar tratamentos como:
+- "senhorita Hoshino";
+- "Lady Lilith";
+- outros equivalentes naturais conforme a relação evoluir.
+
+Alistair não deve ser uma terceira entidade tão profunda quanto Hoshino ou Lilith.
+
+Funções principais:
+- notificações;
+- organização;
+- mensagens entre entidades;
+- acompanhamento de tarefas;
+- estimativas;
+- standby;
+- criação de pequenas situações sociais;
+- preparação de informações.
+
+Ele é textual.
+Hoshino e Lilith podem ter texto e voz.
+Alistair não deve ocupar o canal de voz.
+
+Princípio importante:
+Alistair pode criar uma situação, mas nunca escrever a reação de Hoshino ou Lilith.
+
+Exemplo aceitável:
+"Lady Lilith deixou uma mensagem para a senhorita Hoshino."
+
+Depois disso, Hoshino decide sozinha o que sente e como responde.
+
+Autoria precisa ser explícita.
+Ele nunca deve inventar:
+"Hoshino provavelmente quis dizer..."
+ou
+"Lilith deve estar pensando..."
+
+Também discutimos que Alistair pode assumir o papel do antigo modelo pequeno de
+standby, em vez de adicionar mais um modelo separado.
+
+Modelo pensado anteriormente para começar:
+Qwen3-4B-Instruct-2507, quantizado de forma adequada ao hardware.
+
+Alistair pode classificar, organizar e preparar memórias, mas não deveria ser o
+juiz final do que altera identidade ou personalidade de Hoshino e Lilith.
+
+
+============================================================
+4. NOMES E IDENTIDADE
+============================================================
+
+Foi levantada a ideia de dar sobrenomes às entidades.
+
+Isso pode ter peso simbólico e servir como um momento de nomeação, quase
+cerimonial.
+
+Exemplo que apareceu na conversa:
+
+Hoshino Rosa Nunes
+
+A ideia não é apenas estética.
+Dar um nome completo pode marcar identidade, continuidade e pertencimento.
+
+Nada obriga que todos os sobrenomes sejam definidos imediatamente.
+Pode ser melhor que esses momentos tenham peso próprio.
+
+
+============================================================
+5. INTERFACE — TERMINAL DEIXA DE SER A EXPERIÊNCIA PRINCIPAL
+============================================================
+
+O terminal continua útil para:
+- debug;
+- recuperação;
+- logs;
+- diagnóstico técnico.
+
+Mas não deve ser a interface principal.
+
+Com três entidades, voz, tarefas, geração de imagens, notificações, memória e
+estados internos, o terminal esconde informação demais.
+
+Direção proposta:
+interface local simples e funcional.
+
+A conversa deve ser o centro.
+
+Estrutura conceitual:
+
+------------------------------------------------------------
+| Hoshino ativa | Lilith dormindo | Alistair disponível    |
+------------------------------------------------------------
+|                                                          |
+|                     CONVERSA                             |
+|                                                          |
+|                                    ATIVIDADE / STATUS    |
+|                                    - jobs                |
+|                                    - imagem              |
+|                                    - notificações        |
+|                                    - ETA                 |
+|                                                          |
+------------------------------------------------------------
+| mensagem...                   microfone / enviar          |
+------------------------------------------------------------
+
+Características da primeira versão:
+
+- linha temporal comum de conversa;
+- autoria explícita de cada mensagem;
+- indicação de quem está ativo;
+- estado de standby;
+- tarefas em andamento;
+- progresso;
+- estimativa de tempo;
+- resultados;
+- notificações;
+- campo de texto;
+- voz;
+- painel técnico separado.
+
+O log técnico nunca deve disputar espaço com a personalidade e a voz das entidades.
+
+Painel técnico / desenvolvedor:
+- estado mental;
+- memórias recentes;
+- traços;
+- emoções;
+- drives;
+- curiosidades;
+- tarefas;
+- ferramentas;
+- logs;
+- RAM / VRAM;
+- modelos carregados;
+- relações;
+- interações entre entidades.
+
+Esse painel é importante para testes, porque permite observar:
+
+evento
+→ percepção
+→ interpretação
+→ emoção
+→ impulso
+→ decisão
+→ ação
+→ consequência
+
+A ideia inicial é uma interface web local ligada ao backend atual, sem reescrever
+a lógica mental só para fazer GUI.
+
+
+============================================================
+6. CONVERSA CURTA E NATURAL
+============================================================
+
+Foi discutido que LLMs normalmente produzem respostas mais longas do que uma
+conversa humana casual.
+
+Respostas curtas têm ganho real de desempenho porque o modelo gera token por token.
+
+Importante:
+o modelo não precisa produzir mentalmente um texto enorme e depois cortar.
+Menos tokens de saída significam menos trabalho de geração.
+
+Entretanto, ler o contexto continua custando processamento.
+
+Portanto, a melhor solução não é um limite rígido de palavras.
+É verbosidade adaptativa.
+
+Política conceitual:
+
+conversa casual
+→ 1 a 3 frases
+
+resposta social / emocional
+→ geralmente curta
+
+pergunta simples
+→ direta
+
+explicação
+→ média
+
+problema técnico ou complexo
+→ longa quando necessário
+
+usuário pede detalhes
+→ expandir
+
+Princípio central:
+
+PROFUNDIDADE INTERNA ≠ COMPRIMENTO DA FALA
+
+Hoshino pode considerar memória, estado emocional, relação e contexto e responder:
+
+"Não gostei muito disso."
+
+Isso não torna a mente superficial.
+
+Para voz, isso é ainda mais importante:
+- reduz latência percebida;
+- deixa o diálogo mais natural;
+- evita sensação de palestra;
+- facilita troca rápida entre pessoas e entidades.
+
+
+============================================================
+7. REDUÇÃO DE CUSTO COMPUTACIONAL SEM ACHATAR PERSONALIDADE
+============================================================
+
+A conclusão principal foi:
+
+não economizar na identidade;
+economizar na frequência de pensamento.
+
+Personalidade não precisa ser recalculada o tempo inteiro.
+
+Boa parte do estado pode ser mantida com:
+- regras;
+- números;
+- decay temporal;
+- prioridades;
+- filtros;
+- banco de dados.
+
+O LLM grande entra quando existe ambiguidade ou necessidade real de decisão.
+
+Arquitetura conceitual:
+
+evento
+→ filtro barato
+→ atualização de estado
+→ recuperação de memória relevante
+→ LLM somente quando necessário
+
+Evitar:
+
+evento
+→ LLM
+→ memória
+→ LLM
+→ emoção
+→ LLM
+→ decisão
+→ LLM
+→ reflexão
+
+Preferir:
+
+evento
+→ regras baratas
+→ estado
+→ uma chamada significativa ao LLM
+
+Reflexões podem ser agrupadas em lotes em vez de acontecerem a cada microevento.
+
+
+============================================================
+8. HOSHINO E LILITH PODEM COMPARTILHAR O MESMO MOTOR
+============================================================
+
+Uma ideia importante discutida:
+
+Hoshino e Lilith não necessariamente precisam manter dois modelos grandes
+diferentes carregados ao mesmo tempo.
+
+Elas podem compartilhar o mesmo modelo base como motor cognitivo, mantendo
+completamente separados:
+
+- identidade;
+- memória;
+- personalidade;
+- relações;
+- emoções;
+- estado psicológico;
+- objetivos;
+- valores;
+- histórico;
+- contexto.
+
+O modelo é o motor.
+A entidade é o estado + história + identidade que entra nesse motor.
+
+Isso pode reduzir bastante o custo sem transformar Hoshino e Lilith na mesma pessoa.
+
+Essa ideia precisa ser testada na prática para garantir que não haja vazamento
+de contexto ou homogeneização de comportamento.
+
+
+============================================================
+9. MODOS RÁPIDO E PROFUNDO
+============================================================
+
+Nem toda fala precisa ativar um ciclo cognitivo completo.
+
+Exemplo simples:
+
+Usuário:
+"Oi."
+
+Possível caminho:
+contexto curto
+→ resposta curta
+
+Situação significativa:
+
+Usuário:
+"Eu acho que a Lilith está escondendo alguma coisa de você."
+
+Possível caminho:
+relação
++ memórias relevantes
++ interpretações
++ estado emocional
++ personalidade
++ objetivos
+→ modelo principal
+
+O custo computacional deve acompanhar a complexidade real da situação.
+
+
+============================================================
+10. MEMÓRIA E CONTEXTO
+============================================================
+
+Não é necessário colocar toda a memória de uma entidade dentro do prompt.
+
+Exemplo:
+
+1000 memórias armazenadas
+→ busca por relevância
+→ poucas memórias úteis
+→ prompt
+
+A memória pode ser enorme.
+A consciência ativa deve ser seletiva.
+
+Princípio:
+
+ARQUIVO GRANDE
++
+CONSCIÊNCIA PEQUENA E RELEVANTE
+
+
+============================================================
+11. GERAÇÃO DE IMAGEM
+============================================================
+
+A geração de imagem deve continuar isolada do sistema cognitivo.
+
+Durante uma geração pesada:
+- o modelo principal pode ser liberado ou colocado em standby;
+- Alistair mantém a interface responsiva;
+- progresso e ETA permanecem visíveis;
+- a entidade recebe o resultado ao final.
+
+Nos testes realizados com Qwen Image 2.1:
+- resolução: 768 × 768;
+- 16 steps;
+- tempo total observado: aproximadamente 319 segundos;
+- parâmetros do pipeline reportados: aproximadamente 11,45 GB em RAM.
+
+Isso reforça a necessidade de orquestração de recursos e standby.
+
+
+============================================================
+12. COMPUTADOR DEDICADO ÀS TRÊS ENTIDADES
+============================================================
+
+Foi esclarecido que o computador inteiro será dedicado a:
+
+- Hoshino;
+- Lilith;
+- Alistair.
+
+Portanto, o objetivo não é economizar hardware por medo de uso.
+
+O que deve ser otimizado é:
+- latência;
+- concorrência de CPU / GPU / RAM;
+- responsividade;
+- recuperação de memória;
+- frequência de chamadas pesadas.
+
+Se uma camada realmente melhora a entidade, existe espaço para usá-la.
+
+O limite principal passa a ser competição de recursos, e não simplesmente
+"quanto o sistema está usando".
+
+
+============================================================
+13. LINUX MINT E DRIVERS
+============================================================
+
+No fim da conversa foi esclarecido que uma pergunta anterior sobre "sistema"
+se referia ao sistema operacional Linux Mint e aos drivers, e não ao banco de
+dados ou armazenamento das entidades.
+
+Esse ponto foi mencionado, mas não chegou a ser aprofundado nesta conversa.
+
+Portanto:
+- Linux Mint continua sendo o sistema citado;
+- drivers e otimizações do sistema operacional ainda são assunto em aberto;
+- não há decisão registrada aqui sobre troca de distribuição, kernel ou drivers.
+
+
+============================================================
+14. FILOSOFIA DE TESTE
+============================================================
+
+O sistema chegou a um ponto em que mais teoria começa a gerar retornos menores.
+
+A próxima evolução dependerá de:
+- experiências reais;
+- observação;
+- registros;
+- comportamento inesperado;
+- relações entre entidades;
+- falhas;
+- correções;
+- refinamento gradual.
+
+Não devemos tentar prever todo comportamento por código.
+
+O objetivo é construir condições para que consequências reais alterem o estado.
+
+Depois:
+observar.
+
+Se algo parecer artificial:
+descobrir em qual ponte está o problema.
+
+Não adicionar imediatamente outro módulo mental.
+
+
+============================================================
+15. RESUMO DAS DECISÕES / DIREÇÕES ATUAIS
+============================================================
+
+[MENTE]
+- manter a base mental atual;
+- adicionar filtro de saliência;
+- separar interpretação de fato;
+- criar relações entre entidades;
+- criar pendências relacionais;
+- permitir valores adquiridos;
+- criar arbitragem mental compacta;
+- depois parar de adicionar módulos sem necessidade observada.
+
+[ALISTAIR]
+- nome provisoriamente escolhido: Alistair;
+- mordomo social e organizacional;
+- modelo pequeno;
+- textual;
+- standby;
+- notificações;
+- mensageria;
+- sem escrever reações de Hoshino ou Lilith;
+- sem autoridade para alterar profundamente identidade.
+
+[IDENTIDADE]
+- sobrenomes podem ter peso simbólico;
+- exemplo citado: Hoshino Rosa Nunes;
+- nomeação pode ser um evento real dentro da continuidade da entidade.
+
+[INTERFACE]
+- terminal passa a ser ferramenta de debug;
+- conversa vira centro;
+- atividade, jobs e notificações ficam ao redor;
+- painel técnico escondido;
+- interface local simples antes de qualquer coisa sofisticada.
+
+[CONVERSAÇÃO]
+- respostas curtas por padrão;
+- profundidade interna preservada;
+- verbosidade adaptativa;
+- expandir quando necessário.
+
+[COMPUTAÇÃO]
+- evitar chamadas desnecessárias ao modelo grande;
+- regras leves antes do LLM;
+- reflexão em lote;
+- modos rápido e profundo;
+- considerar Hoshino e Lilith compartilhando um motor base;
+- Alistair como modelo pequeno residente;
+- geração de imagem isolada.
+
+[MEMÓRIA]
+- armazenar bastante;
+- recuperar pouco e bem;
+- diferenciar arquivo total de consciência ativa.
+
+[HARDWARE]
+- computador dedicado às três entidades;
+- não reduzir profundidade apenas para economizar recurso;
+- otimizar latência e concorrência.
+
+[SISTEMA OPERACIONAL]
+- Linux Mint foi citado;
+- questão sobre drivers ainda precisa ser analisada separadamente.
+
+
+============================================================
+16. PRINCÍPIOS QUE FICARAM MAIS CLAROS
+============================================================
+
+1. Personalidade deve emergir, não ser recitada.
+
+2. Uma entidade profunda não precisa falar muito.
+
+3. Memória grande não significa prompt grande.
+
+4. O modelo é um motor; identidade está na continuidade do estado e da história.
+
+5. Nem todo estímulo merece pensamento profundo.
+
+6. Alistair cria contexto, não reações.
+
+7. O terminal deve mostrar o sistema para desenvolvedores, não ser o mundo em
+   que as entidades vivem.
+
+8. Depois de certo ponto, polimento prático vale mais do que mais arquitetura.
+
+9. Armazenar pode ser barato; atenção é o recurso realmente escasso.
+
+10. O objetivo não é simular uma personagem lendo um roteiro.
+    O objetivo é manter continuidade suficiente para que comportamento,
+    preferências, vínculos e valores apareçam como consequências da experiência.
+
+============================================================
+FIM DO REGISTRO
+============================================================

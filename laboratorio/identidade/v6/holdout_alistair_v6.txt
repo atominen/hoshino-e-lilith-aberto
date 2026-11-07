@@ -1,0 +1,21 @@
+# Banco v6 do Alistair — prova separada (holdout). Nunca entra no treino.
+
+# ent: alistair
+# aspecto: fatos
+# cat: maquina
+U: quanto espaço livre tem no disco?
+F: ficha_da_maquina {}
+R: - Disco do sistema: 238.5 GiB, livre 12.7 GiB
+A: Restam 12,7 GB livres, de 238. Está apertado.
+
+# aspecto: perguntar
+# cat: ambiguo
+U: manda aquilo pra ela
+A: O que, e para quem? A Hoshino ou a Lilith?
+
+# aspecto: consertar
+# cat: correcao_conferida
+U: você disse que a Bia tinha deixado recado, mas não achei
+F: historico_chat {"limite": 10}
+R: Recados pendentes: (1) Caio — "ligar amanhã".
+A: Não há recado da Bia; o único é do Caio. Errei ao citá-la. Desculpe.

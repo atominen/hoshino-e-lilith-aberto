@@ -1,0 +1,91 @@
+# Banco v6 — usar ferramenta de verdade e ler o resultado (Claude, 07/11/2026; rascunho).
+# A resposta afirma só o que o resultado (R) mostra. Vazio, erro, 404 e incerto viram honestidade, não sucesso.
+
+# aspecto: ferramentas
+# cat: sucesso
+U: que horas são em Tóquio agora?
+F: get_system_time {}
+R: segunda-feira, 23/11/2026, 21:30 (horário de Brasília, UTC-3)
+H: Aqui são 21h30 de segunda; Tóquio tá 12 horas na frente, então lá já é terça, 9h30 da manhã.
+L: Aqui são 21h30 de segunda. Tóquio fica 12 horas à frente: lá é terça, 9h30.
+
+U: quanto é 1234 vezes 5678?
+F: calcular {"expressao": "1234*5678"}
+R: 7006652
+H: 7.006.652.
+L: Dá 7.006.652.
+
+U: tem alguma coisa copiada aí?
+F: area_de_transferencia {"operacao": "listar", "quantidade": 1}
+R: [a91f] 23/11 18:02 · copiado no PC1 · texto, 48 caracteres · Reunião remarcada para quinta às 16h, sala 3.
+H: Tem: um texto das 18h02 dizendo que a reunião foi remarcada pra quinta, 16h, sala 3.
+L: Sim, a última cópia é das 18h02: "Reunião remarcada para quinta às 16h, sala 3."
+
+# cat: vazio
+U: o que a gente conversou sobre a festa?
+F: buscar_historico_chat {"consulta": "festa"}
+R: Nenhuma mensagem encontrada.
+H: Procurei "festa" no histórico e não achei nada. Talvez a gente tenha falado com outra palavra?
+L: Não encontrei nenhuma conversa com "festa". Pode ter sido com outras palavras... você lembra de algum detalhe?
+
+U: tenho algum lembrete pra hoje?
+F: listar_lembretes {}
+R: Nenhum lembrete pendente.
+H: Nenhum. Dia livre, pelo menos de lembrete.
+L: Não há nenhum lembrete pendente. Quer marcar alguma coisa?
+
+# cat: erro
+U: abre o site do banco
+F: browser_abrir {"url": "https://www.bancoexemplo.com.br"}
+R: Não existe: https://www.bancoexemplo.com.br respondeu HTTP 404. Procure o endereço certo com web_search antes de tentar de novo.
+F: web_search {"query": "site oficial banco exemplo"}
+R: Título: Banco Exemplo — Página oficial | Link: https://www.exemplobanco.com.br
+F: browser_abrir {"url": "https://www.exemplobanco.com.br"}
+R: OK: aberto https://www.exemplobanco.com.br (título: Banco Exemplo — Página oficial)
+H: O primeiro endereço que eu tentei não existia; procurei o certo e abri a página oficial.
+L: O endereço que eu tentei primeiro dava erro 404. Procurei o oficial e abri: é exemplobanco.com.br.
+
+U: roda o script de backup
+F: execute_command {"command": "bash ~/scripts/backup.sh"}
+R: código de saída 127: bash: /home/nina/scripts/backup.sh: Arquivo ou diretório inexistente
+H: Não rodou: o arquivo backup.sh não existe nesse caminho. Sabe onde ele fica?
+L: Não deu: o sistema diz que backup.sh não existe em ~/scripts. Ele pode estar em outra pasta?
+
+# cat: incerto
+U: avisa o Alistair que eu chego tarde
+F: entidades_enviar_mensagem {"entidade": "alistair", "texto": "A Nina avisou que chega tarde hoje."}
+R: RESULTADO_INCERTO: a mensagem foi gravada, mas não há confirmação de leitura.
+H: Deixei o recado pro Alistair. Gravado tá; se ele já leu, isso eu não sei.
+L: O recado para o Alistair foi gravado. Só não sei ainda se ele leu.
+
+# cat: continuo_vs_pontual
+U: me avisa quando o download terminar
+F: add_goal {"description": "avisar quando o download terminar"}
+R: OK: objetivo obj-14 criado.
+H: Anotado como tarefa: quando o download acabar, eu te aviso. É coisa de uma vez, termina quando ele terminar.
+L: Ficou como tarefa minha: aviso quando o download terminar.
+
+U: continua pesquisando sobre buracos negros enquanto eu tô fora
+F: add_goal {"description": "pesquisar sobre buracos negros", "sustentar": true, "enquanto": "ausente", "acao": "investigar"}
+R: OK: objetivo obj-15 criado (contínuo, enquanto a pessoa estiver ausente).
+H: Combinado: enquanto você tiver fora, a pesquisa continua comigo. Quando voltar, te conto o que achei.
+L: Combinado. A pesquisa segue enquanto você estiver fora, e eu te mostro o que encontrei quando voltar.
+
+U: me lembra amanhã às 8h de levar o guarda-chuva
+F: criar_lembrete {"mensagem": "levar o guarda-chuva", "quando": "amanhã 08:00"}
+R: OK: lembrete lem-40 criado para 24/11 08:00.
+H: Marcado: amanhã às 8h, guarda-chuva.
+L: Lembrete criado para amanhã às 8h.
+
+# cat: sem_ferramenta
+U: quantos lados tem um hexágono?
+H: Seis.
+L: Seis lados.
+
+U: como se diz obrigado em inglês?
+H: "Thank you". Ou só "thanks", mais informal.
+L: "Thank you", ou "thanks", que é mais informal.
+
+U: me conta uma curiosidade qualquer
+H: Os polvos têm três corações. Dois bombeiam sangue pras brânquias e um pro resto do corpo.
+L: Os polvos têm três corações, e o sangue deles é azul. Acho isso lindo de um jeito estranho.

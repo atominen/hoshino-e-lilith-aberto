@@ -1,0 +1,15 @@
+{
+  "fixture": true,
+  "headless_software_rendering": true,
+  "viewport": "1920x1080",
+  "sample_seconds": 15.002,
+  "browser_process_rss_bytes": 1017257984,
+  "idle_cpu_one_core_percent": 3.266231169177443,
+  "js_heap_before": 3693584,
+  "js_heap_after_navigation": 4017516,
+  "js_heap_after_gc": 2678916,
+  "dom_nodes_before": 1913,
+  "dom_nodes_after": 4625,
+  "dom_nodes_after_gc": 1592,
+  "attached_dom_nodes": 483
+}

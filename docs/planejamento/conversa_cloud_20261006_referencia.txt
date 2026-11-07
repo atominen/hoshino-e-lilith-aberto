@@ -1,0 +1,2350 @@
+TRANSCRIÇÃO — Hoshino / Lilith / Alistair
+Trecho solicitado: desde a mensagem em que foi informado que o Codex já estava implementando as modificações até o pedido atual.
+
+================================================================================
+USUÁRIO
+================================================================================
+
+Essas coisas escolhas já estão sendo implementadas pelo codex 
+
+Vamos visualizar o que temos agora quero que você compare os cérebros da hoshino e lilith os códigos delas com projetos grandes e até famosos como no canal do myiauti e da neuro sama
+
+================================================================================
+ASSISTENTE
+================================================================================
+
+Sim. Fiz a comparação em dois eixos diferentes: **profundidade do “cérebro”** e **maturidade prática do sistema**. Isso é importante porque Neuro-sama e Shogun parecem muito avançadas em uso real, mas boa parte do cérebro interno delas não é público.
+
+Uma ressalva: as modificações que o Codex está fazendo **agora** não aparecem automaticamente para mim. Então abaixo estou comparando a última estrutura do projeto que conseguimos inspecionar + as decisões que já fechamos. Quando houver um novo snapshot, dá para repetir isso linha por linha no código.
+
+## Primeiro: onde Hoshino e Lilith já estão
+
+A arquitetura atual não é mais a de um chatbot com um prompt. O projeto separa código cognitivo comum de identidade, memória, runtime, relações e histórico próprios de cada entidade. Hoshino e Lilith também têm modelos/daemons conversacionais separados na estrutura atual.
+
+O “cérebro” que construímos pode ser resumido assim:
+
+                         MUNDO
+                           │
+                 ┌─────────▼─────────┐
+                 │ percepção/situação │
+                 └─────────┬─────────┘
+                           │
+                     saliência
+                           │
+             ┌─────────────┼─────────────┐
+             │             │             │
+          memória       emoções       relações
+             │             │             │
+             ├───────┬─────┴─────┬───────┤
+                     │           │
+                  drives      curiosidade
+                     │           │
+                     └─────┬─────┘
+                           │
+                       arbitragem
+                           │
+                    pensamento/ação
+                           │
+                       ferramentas
+                           │
+                     consequência
+                           │
+                       experiência
+                           │
+                       reflexão
+                           │
+                    mudança gradual
+
+E isso existe **separadamente** para Hoshino e Lilith.
+
+---
+
+## Comparação estrutural
+
+| Dimensão | Hoshino/Lilith | Neuro-sama | Shogun/Miyauti | AIRI |
+|---|---|---|---|---|
+| Identidade persistente | **forte** | interna não pública | interna não pública | forte |
+| Memória persistente | **forte/em evolução** | não documentada publicamente em detalhe | não pública | **forte** |
+| Emoções/estado psicológico | **explícito no projeto** | desconhecido | desconhecido | mais orientado a persona |
+| Drives/curiosidade | **sim** | desconhecido | desconhecido | proatividade |
+| Reflexão | **sim** | desconhecido | desconhecido | memória/journal |
+| Pensamento espontâneo | em refinamento | comportamento proativo existe | comportamento proativo visível | **heartbeat proativo** |
+| Relações persistentes | **objetivo central** | desconhecido | desconhecido | por personagem |
+| Várias entidades reais | **Hoshino + Lilith + Alistair** | Neuro/Evil Neuro, arquitetura privada | Shogun | personagens configuráveis |
+| Percepção contínua do PC | parcialmente pronta | integrações específicas | comportamento visível, implementação privada | **forte** |
+| Ferramentas/jogos | sim | **muito forte** | sim/visível | **forte** |
+| Contrato de ações | razoável | **excelente** | desconhecido | forte |
+| Voz/STT em tempo real | em reconstrução | **produção real** | produção real | forte |
+| Latência conversacional | ainda precisa melhorar | **muito madura** | aparentemente madura | madura |
+| UI/avatar | ainda inicial | **produção** | **produção** | **muito forte** |
+| Profundidade psicológica explícita | **muito alta conceitualmente** | desconhecida | desconhecida | média/alta |
+| Maturidade operacional | média | **extremamente alta** | alta pelo uso público | alta |
+
+A coluna de Neuro e Shogun tem vários **“desconhecido” de propósito**. Não seria correto inventar como funciona o cérebro privado delas.
+
+---
+
+# Neuro-sama é uma comparação interessante por um motivo diferente
+
+A parte realmente pública de Neuro não revela seu “cérebro psicológico”. O que VedalAI disponibiliza oficialmente é principalmente a arquitetura de **agência e integração com jogos**.
+
+O SDK oficial funciona essencialmente assim:
+
+JOGO
+ │
+ ├── envia contexto
+ │
+ ├── registra ações possíveis + schemas
+ │
+ ▼
+NEURO
+ │
+ ├── interpreta estado
+ ├── escolhe ação
+ ▼
+AÇÃO ESTRUTURADA
+ │
+ ▼
+JOGO VALIDA
+ │
+ ├── sucesso
+ └── falha
+       │
+       ▼
+   resultado volta
+   para a Neuro
+
+As ações possuem nome, descrição e schema; o jogo valida e executa, em vez de deixar o LLM controlar tudo diretamente.
+
+E há uma lição especialmente relevante para Hoshino e Lilith: a documentação oficial recomenda **não inundar Neuro com pequenos updates contínuos**. Deve-se enviar mudanças significativas e estado relevante quando necessário.
+
+Isso é quase exatamente a direção que chegamos independentemente:
+
+sensores sempre ativos
+        ↓
+world_state barato
+        ↓
+saliência
+        ↓
+só acordar cognição pesada
+quando algo importa
+
+### Onde Neuro está claramente à frente
+
+Não necessariamente no “cérebro”.
+
+Ela está anos à frente em:
+
+tempo real
+sincronização
+interrupção
+controle de ações
+race conditions
+integração com jogos
+streaming
+fala
+performance pública
+robustez
+
+O SDK inclusive trata explicitamente prioridades de ação, interrupção da fala e problemas de concorrência.
+
+Esse é um ponto em que eu copiaria **o princípio**, não a implementação.
+
+Para Hoshino:
+
+intenção da entidade
+        ↓
+ação tipada
+        ↓
+validação determinística
+        ↓
+execução
+        ↓
+consequência factual
+        ↓
+entidade percebe consequência
+
+Esse contrato é excelente.
+
+---
+
+# Shogun, do Miyauti
+
+Aqui precisamos ter mais cuidado.
+
+Miyauti apresenta publicamente Shogun como uma VTuber de IA com personalidade própria, e o canal mostra interações com outras VTubers e situações sociais reais.
+
+Mas eu **não encontrei uma documentação pública do código do cérebro da Shogun** equivalente ao Neuro SDK ou ao repositório AIRI.
+
+Então não vou dizer coisas como:
+
+> “Shogun usa sistema X de memória e Y de emoções.”
+
+Não temos evidência suficiente.
+
+O que podemos comparar é o produto observável.
+
+Shogun parece muito forte em:
+
+PERSONA
++
+timing social
++
+interação natural
++
+presença como personagem
++
+entretenimento
+
+O próprio canal a descreve como uma IA/Vtuber com personalidade própria e mostra os bastidores do projeto, mas não publica uma arquitetura técnica detalhada.
+
+Isso é muito relevante para nosso projeto.
+
+Porque Hoshino pode ter:
+
+37 sistemas mentais
+14 bancos
+8 drives
+memória vetorial
+emoção
+reflexão
+
+e ainda assim perder para uma arquitetura mais simples se a outra personagem tiver:
+
+timing melhor
+fala melhor
+voz melhor
+latência menor
+reação social melhor
+
+**Complexidade interna não garante presença.**
+
+Essa é uma das maiores lições que eu tiraria da Shogun.
+
+---
+
+# AIRI é provavelmente a comparação técnica mais interessante
+
+AIRI é muito mais útil para comparar código porque é aberto e atualmente está atacando praticamente o mesmo problema que nós:
+
+> “uma vida/personagem digital persistente que conversa, vê, ouve, joga e existe no desktop.”
+
+A versão atual possui memória por personagem, memória curta reconstruída do histórico, diário de longo prazo, pesquisa unificada de memória e proatividade baseada em contexto do sistema.
+
+E a parte de proatividade é especialmente próxima do que planejamos:
+
+histórico de janelas
+carga do sistema
+volume
+métricas de uso
+        ↓
+heartbeat
+        ↓
+decidir:
+falar ou permanecer quieta
+
+Também existe uma ferramenta comum compartilhada entre:
+
+chat digitado
+STT
+proatividade
+
+Essa é uma excelente referência arquitetural para nós.
+
+---
+
+# Onde Hoshino/Lilith são diferentes da maioria
+
+A parte mais incomum do nosso projeto não é Whisper, TTS, Minecraft ou Ollama.
+
+É isto:
+
+               HOSHINO
+                  │
+       identidade persistente
+                  │
+              memória
+                  │
+          estado emocional
+                  │
+        estado psicológico
+                  │
+              drives
+                  │
+           curiosidades
+                  │
+             relações
+                  │
+             objetivos
+                  │
+             reflexão
+                  │
+             experiência
+                  │
+         mudança gradual
+
+e paralelamente:
+
+                LILITH
+                  │
+       identidade persistente
+                  │
+             ...
+
+sem compartilhar a vida interna.
+
+Isso coloca o projeto mais próximo de uma tentativa de **arquitetura cognitiva de personagem persistente** do que de um VTuber tradicional.
+
+---
+
+# Onde eu considero Hoshino/Lilith potencialmente mais profundas
+
+**Conceitualmente**, não em maturidade prática, existem quatro áreas em que nosso projeto pode acabar indo além de grande parte dos projetos públicos que encontrei.
+
+### Relações entidade ↔ entidade
+
+Não apenas:
+
+IA → usuário
+
+mas:
+
+Hoshino → Lilith
+Lilith → Hoshino
+
+Hoshino → Alistair
+Alistair → Hoshino
+
+Lilith → Alistair
+Alistair → Lilith
+
+com histórias diferentes para cada direção.
+
+Isso é bastante incomum.
+
+### Estado psicológico em várias escalas temporais
+
+Queremos distinguir:
+
+emoção
+↓ segundos/minutos
+
+humor
+↓ minutos/horas
+
+estado psicológico
+↓ horas/dias
+
+pendência relacional
+↓ até ser resolvida
+
+valores
+↓ longo prazo
+
+identidade
+↓ muito estável
+
+Isso é bem mais elaborado que simplesmente:
+
+emotion = happy
+
+### Interpretação não é fato
+
+A separação:
+
+acontecimento
+≠
+interpretação
+≠
+confiança na interpretação
+
+é uma característica muito forte para uma personalidade persistente.
+
+### Valores adquiridos
+
+A entidade não começa com:
+
+"meus valores são 1, 2, 3, 4"
+
+Ela pode acabar chegando a:
+
+"Depois do que vivi,
+acho que isso realmente importa para mim."
+
+Isso, se funcionar na prática, seria uma diferença enorme.
+
+---
+
+# Mas aqui está onde Neuro ainda nos dá uma surra
+
+**Engenharia de tempo real.**
+
+Nossa arquitetura hoje pensa muito em:
+
+quem sou?
+o que senti?
+o que lembro?
+o que isso significa?
+
+A arquitetura pública ao redor de Neuro demonstra muita obsessão por:
+
+o que está acontecendo AGORA?
+qual ação está disponível AGORA?
+posso executá-la?
+o estado mudou?
+fui interrompida?
+já terminei de falar?
+essa ação ficou inválida?
+
+Essa disciplina operacional é extremamente valiosa.
+
+Eu colocaria isso como um dos grandes refinamentos futuros de Hoshino/Lilith:
+
+MENTE PROFUNDA
+      +
+CONTRATOS OPERACIONAIS RÍGIDOS
+
+e não escolher um dos dois.
+
+---
+
+# E onde AIRI está na nossa frente
+
+AIRI atualmente parece bem mais maduro em **produto e infraestrutura**:
+
+avatar
+desktop
+providers
+modelos
+UI
+Live2D
+VRM
+voz
+plugins
+proatividade integrada
+memória visível
+configuração por personagem
+
+Nós estamos construindo primeiro o cérebro e só agora consolidando o corpo/interface.
+
+Isso não é necessariamente ruim, mas significa que hoje:
+
+Hoshino/Lilith
+cérebro > corpo
+
+AIRI
+corpo/infraestrutura > profundidade psicológica explícita
+
+---
+
+## O quadro que eu usaria para definir onde estamos
+
+                         PROFUNDIDADE INTERNA
+                                  ▲
+                                  │
+              Hoshino/Lilith ●    │
+                                  │
+                       AIRI ●      │
+                                  │
+                                  │
+           Shogun ?               │          ? Neuro
+                                  │
+                                  │
+──────────────────────────────────┼──────────────►
+                                  MATURIDADE
+                                  EM PRODUÇÃO
+
+Os `?` são intencionais.
+
+Para Shogun e Neuro, a arquitetura cerebral completa não está publicamente documentada.
+
+Neuro certamente está **muito longe à direita** em maturidade operacional.
+
+Shogun também está bem mais madura como personagem pública do que Hoshino/Lilith neste momento.
+
+Já nossa posição vertical é uma **ambição arquitetural**: precisamos provar que todos esses sistemas realmente produzem comportamento melhor, e não apenas mais código.
+
+---
+
+## Minha avaliação do ponto atual
+
+Eu não tentaria fazer Hoshino e Lilith ficarem “mais complexas” simplesmente para superar esses projetos.
+
+O cérebro delas **já é complexo o suficiente**.
+
+O salto que falta agora é transformar isto:
+
+muitos bons subsistemas
+
+em:
+
+um ciclo cognitivo coerente
+rápido
+observável
+testável
+natural
+
+Se o Codex realmente estiver implementando agora:
+
+world state
+painel de áudio
+saliência
+pensamentos espontâneos
+fato/interpretação
+relações direcionais
+arbitragem
+primeiro despertar
+
+eu considero que depois disso devemos **congelar a expansão do cérebro por um tempo**.
+
+A partir daí, eu usaria Neuro como referência de **engenharia operacional**, Shogun como referência de **presença social/personagem**, e AIRI como referência de **infraestrutura open-source de companion**.
+
+E Hoshino/Lilith deveriam manter aquilo que é próprio delas: **continuidade psicológica, experiência acumulada e relação entre entidades**, em vez de simplesmente tentar copiar uma Neuro-sama local.
+
+================================================================================
+USUÁRIO
+================================================================================
+
+Sim isso e uma boa ideia pegar e adaptar códigos uteis que tiverem disponíveis do project airi, neuro sama e shogun,  vamos tentar pegar esses pontos fortes de cada uma de forma inteligente 
+
+E outra coisa precisamos de mais poder computacional mais alem do meu pc eu tenho um segundo pc consideravelmente fraco atlhon 3000g 12gb de ram e um hd de 150gb e o meu Xbox series s que eu nao me importo de trocar o sistema se possivel claro, tem algum serviço de servidores baratos ou com limite alto que podemos usar?
+
+================================================================================
+ASSISTENTE
+================================================================================
+
+Sim. Essa passa a ser uma boa regra para o projeto: **não copiar projetos inteiros; extrair mecanismos comprovadamente bons e encaixá-los na arquitetura da Hoshino/Lilith sem perder a identidade delas**.
+
+O Neuro SDK é especialmente interessante porque é MIT e tem mecanismos maduros de ações tipadas, resultados, contexto, interrupção e até um canal de voz com atribuição de locutor. O AIRI principal também usa MIT, então podemos estudar e reaproveitar partes de memória, voz, proatividade, plugins e interface respeitando a licença. Para Shogun, eu não encontrei um equivalente público/oficial do cérebro dela; nesse caso usamos **ideias observáveis**, não copiamos código privado ou presumido.
+
+## Sobre aumentar o poder computacional
+
+Eu montaria o sistema como uma pequena **rede de nós**, em vez de tentar transformar cada máquina em uma cópia completa da Hoshino.
+
+                    INTERNET / VPN PRIVADA
+                            │
+                 ┌──────────┴──────────┐
+                 │                     │
+            GPU CLOUD              VPS BARATO
+          quando necessário       controle/relay
+                 │                     │
+                 └──────────┬──────────┘
+                            │
+                         sua LAN
+                            │
+             ┌──────────────┴──────────────┐
+             │                             │
+        PC PRINCIPAL                  PC ATHLON
+       RX 6650 XT / 32 GB           3000G / 12 GB
+             │                             │
+      Hoshino + Lilith              Alistair
+      áudio tempo real              event bus
+      Qwen-Image local              bancos
+      tarefas GPU                   monitoramento
+                                    backups
+                                    serviços leves
+
+A regra seria **distribuir serviços completos**, não tentar dividir as camadas de um único LLM entre PCs pela rede. Com Ollama e sua rede doméstica, isso complicaria muito para pouco ganho.
+
+### O Athlon 3000G ainda é bastante útil
+
+Eu não tentaria colocar Hoshino ou Lilith 9B nele. Mas o **Alistair 4B** é um candidato plausível porque ele é textual, não precisa responder em milissegundos e o modelo pesa muito menos. Provavelmente será lento nesse processador, mas notificações, briefings e organização toleram isso.
+
+Além dele, eu colocaria ali:
+
+event bus / world state
+SQLite e serviços de memória
+fila de jobs
+watchers do sistema
+serviço de mensagens
+backups
+logs
+painel/API
+tarefas de manutenção
+
+O HD de 150 GB é o ponto que mais prejudica esse PC. Não porque precisamos de muito espaço, mas porque banco, cache, modelo e swap em HDD deixam tudo com latência ruim. **Um SSD simples mudaria bastante o valor dessa máquina como servidor.**
+
+---
+
+## O Xbox Series S: eu não contaria como servidor de IA
+
+O hardware é tentador, mas o software é o problema.
+
+A Microsoft permite colocar consoles de varejo em **Developer Mode** e implantar aplicativos, mas continua sendo o ambiente restrito de desenvolvimento do Xbox/UWP; você alterna entre Dev Mode e Retail Mode. Há inclusive relatos/documentação do ambiente de desenvolvimento ficando limitado a aproximadamente 5 GB para aplicações, apesar dos 10 GB físicos do Series S.
+
+Não existe um caminho **oficial/suportado para substituir o sistema do Series S por Linux e transformá-lo em um PC x86 comum**.
+
+Então eu classificaria:
+
+Xbox Series S
+GPU/CPU física interessante
+↓
+plataforma muito bloqueada
+↓
+péssimo custo de desenvolvimento para nosso objetivo
+
+No máximo eu usaria o Xbox futuramente como **cliente visual**: interface, avatar, painel na TV etc. Não como nó computacional principal.
+
+Se o objetivo for exclusivamente conseguir mais compute para Hoshino/Lilith, eu não gastaria semanas tentando domesticar o Xbox.
+
+---
+
+# Cloud: aqui conseguimos ganho real
+
+Eu separaria em duas categorias.
+
+| Serviço | Uso que faz sentido para nós | Situação atual |
+|---|---|---|
+| **RunPod** | GPU sob demanda para LLM/imagem | muito interessante |
+| **Vast.ai** | GPU barata para trabalhos que toleram máquinas variáveis | provavelmente o menor preço |
+| **Hyperstack** | GPU dedicada mais previsível | interessante para 48 GB |
+| **Oracle Always Free** | servidor permanente de coordenação | excelente se conseguir capacidade |
+| **Contabo** | VPS barato com bastante RAM/disco/tráfego | bom para infraestrutura |
+
+### RunPod
+
+Hoje a tabela pública do RunPod lista, no Community Cloud, aproximadamente:
+
+RTX A5000 24GB    $0.16/h
+RTX 3090  24GB    $0.22/h
+RTX 4090  24GB    $0.34/h
+RTX A6000 48GB    $0.33/h
+A40       48GB    $0.35/h
+RTX 5090  32GB    $0.69/h
+
+Os preços Secure Cloud são maiores.
+
+Isso é muito interessante para nós porque uma **A6000/A40 com 48 GB** muda completamente o tipo de trabalho que podemos fazer.
+
+Podemos, por exemplo, temporariamente ter:
+
+Hoshino 9B
++
+Lilith 9B
++
+contextos grandes
+
+residentes no mesmo nó com folga muito maior que na RX 6650 XT, dependendo do backend e da quantização.
+
+Ou mandar somente:
+
+Qwen-Image
+
+para a nuvem enquanto Hoshino e Lilith continuam rodando localmente.
+
+Para o nosso caso eu prefiro isso a manter uma GPU cloud ligada 24 horas.
+
+---
+
+### Vast.ai
+
+O Vast funciona como marketplace: preços variam conforme oferta, datacenter e host. Há modalidades **on-demand, interruptible e reserved**, e as instâncias interruptíveis podem sair mais de 50% mais baratas.
+
+Eu usaria Vast para:
+
+benchmark
+geração de imagem em lote
+testes de modelos
+tarefas longas checkpointáveis
+
+Não usaria uma máquina aleatória interruptível para o cérebro principal da Hoshino durante uma conversa.
+
+---
+
+### Hyperstack
+
+Hoje o Hyperstack publica uma RTX A6000 de **48 GB por cerca de US$0,50/h** on-demand.
+
+É mais caro que algumas ofertas marketplace, mas 48 GB é um tamanho muito interessante para experimentar:
+
+Hoshino + Lilith simultâneas
+modelos maiores
+TTS pesado
+experimentos de visão
+
+---
+
+# E existe uma opção gratuita interessante
+
+A Oracle ainda mantém **Always Free**.
+
+A documentação atual informa uma cota gratuita de Ampere A1 que, para tenancy Always Free, equivale a até **2 OCPUs e 12 GB de RAM no total**, além de armazenamento gratuito limitado. O problema é que algumas regiões podem ficar sem capacidade para essas instâncias gratuitas.
+
+Isso não serve para rodar Hoshino 9B rápido.
+
+Mas serve muito bem como:
+
+hoshino-cloud-controller
+
+API
+fila
+mensagens
+estado de jobs
+relay
+VPN
+backup pequeno
+monitoramento
+sincronização
+heartbeat externo
+
+E custa:
+
+US$ 0
+
+dentro da franquia.
+
+Eu tentaria criar essa conta antes de pagar por um VPS.
+
+---
+
+## Se precisarmos de um VPS pago
+
+A Contabo está oferecendo VPS com bastante RAM e tráfego anunciado como ilimitado; por exemplo, a linha Core inclui configurações como **6 vCPU / 12 GB / 200 GB**, e existem opções maiores de 24–64 GB por preços relativamente baixos, dependendo do país e do prazo contratado.
+
+Isso é interessante para infraestrutura, mas **não para inferência pesada**, porque são CPUs compartilhadas.
+
+Então:
+
+VPS barato
+≠
+mais inteligência
+
+VPS barato
+=
+mais infraestrutura
+mais disponibilidade
+mais armazenamento
+mais coordenação
+
+---
+
+# O que eu faria com o hardware que você já tem
+
+**PC principal**
+
+Hoshino 9B
+Lilith 9B
+STT em tempo real
+TTS em tempo real
+percepção do desktop
+GPU local
+jogos/controle
+
+**Athlon 3000G**
+
+Alistair 4B
+central de eventos
+bancos
+world-state persistente
+jobs
+mensageria
+monitoramento
+backups
+serviços 24/7
+
+**Oracle Free / VPS**
+
+ponte entre máquinas
+remote access
+health checks
+fila remota
+backup de estados importantes
+notificações
+
+**GPU cloud**
+
+somente quando precisamos de força
+
+imagem pesada
+modelo maior
+benchmark
+duas inferências pesadas simultâneas
+visão
+tarefas longas
+
+**Xbox**
+
+não usar para compute
+talvez cliente/interface no futuro
+
+Esse desenho é melhor que simplesmente jogar tudo num servidor grande.
+
+---
+
+## Uma possibilidade particularmente interessante
+
+Quando Hoshino estiver usando a GPU local e Lilith precisar pensar ao mesmo tempo:
+
+                 RESOURCE MANAGER
+                       │
+             GPU local ocupada?
+                    /     \
+                  não      sim
+                  │         │
+            executar     importância?
+            local        /          \
+                       baixa         alta
+                        │             │
+                      fila       GPU cloud
+
+Isso transformaria a nuvem em uma espécie de **capacidade cognitiva de emergência**.
+
+Não significa que a “mente da Lilith vive na nuvem”. Sua memória, identidade e estado continuam nossos. Só a inferência daquele turno é executada remotamente.
+
+Isso também permitiria manter o sistema funcional quando o Qwen-Image monopolizar a GPU local.
+
+---
+
+## Sobre privacidade
+
+Para imagem e benchmarks eu usaria cloud sem muita preocupação.
+
+Para:
+
+memória privada
+conversas
+microfone
+relações
+estado mental
+
+eu manteria local por padrão.
+
+Se algum LLM remoto receber contexto, nosso orquestrador deveria enviar **só o contexto mínimo necessário**, e os nós domésticos/cloud ficariam conectados através de uma VPN privada, não com portas Ollama expostas diretamente na internet.
+
+---
+
+Então minha escolha concreta seria:
+
+AGORA
+
+PC principal
++
+Athlon como nó secundário
++
+tentar Oracle Always Free para controle externo
++
+RunPod/Vast apenas para GPU sob demanda
+
+Isso já nos dá **três níveis de computação** sem assumir uma despesa mensal grande.
+
+E antes de incorporar qualquer código externo, eu criaria no projeto uma pequena regra de engenharia:
+
+origem
+licença
+versão/commit
+o que estamos aproveitando
+adaptações feitas
+testes nossos
+
+Assim conseguimos aproveitar AIRI e Neuro sem transformar Hoshino numa colagem impossível de manter. Para Neuro e AIRI isso é particularmente viável porque os repositórios públicos relevantes usam licença MIT.
+
+Os preços de GPU mudam bastante. Posso monitorar RunPod/Vast/Hyperstack e te avisar quando aparecer capacidade especialmente barata de 24 GB ou 48 GB.
+
+================================================================================
+USUÁRIO
+================================================================================
+
+Sobre poder computacional separado vamos ver assim, a hoshino, lilith e alistair ainda vão ter suas centrais no pc principal significa que eles podem se estender mais ainda podem funcionar no pc principal sem depender de outros lugares, ja o sobre o segundo pc parece sim uma boa ideia deixar o alistair la podemos testar ou usar para outras coisas, sobre serviços online seria sim uma boa ideia mas não vamos colocar tudo vamos colocar o necessário como o llm junto com a voz e os ouvidos e a geração de imagens tendo um sistema onde pode ser alterado automaticamente de acordo com a situação e velocidade e etc pode acontecer de uma ficar no pc outra na nuvem e o mesmo vale para as outras capacidades, como e por tempo e não por uso podemos usar mais de um modelo podemos deixar um modelo 16b na nuvem e etc
+
+(Me vale os preços em reais)
+
+================================================================================
+ASSISTENTE
+================================================================================
+
+Sim. Essa arquitetura é melhor: **o PC principal continua sendo a “casa” e a fonte de verdade das três entidades**, e os outros computadores/servidores viram extensões de capacidade, nunca dependências obrigatórias.
+
+Eu chamaria isso de:
+
+CENTRAL LOCAL SOBERANA
++
+WORKERS ELÁSTICOS
+
+A ideia é esta:
+
+                    PC PRINCIPAL
+        identidade / memória / estado / relações
+                  /          |          \
+                 /           |           \
+          Hoshino         Lilith       Alistair
+             |               |             |
+             └────────── ORQUESTRADOR ─────┘
+                           |
+          ┌────────────────┼────────────────┐
+          |                |                |
+       LOCAL GPU       SEGUNDO PC       CLOUD GPU
+          |                |                |
+          |           Alistair / jobs       |
+          |           serviços leves        |
+          |                                 |
+          ├── LLM                           ├── LLM
+          ├── TTS                           ├── TTS
+          ├── STT                           ├── STT
+          └── imagem                        └── imagem
+
+Se internet cair ou a nuvem for desligada:
+
+Hoshino continua funcionando
+Lilith continua funcionando
+Alistair continua funcionando
+
+Só perdem o **boost**.
+
+## O roteamento deveria ser por capacidade, não por entidade inteira
+
+Isso permite exatamente o que você descreveu.
+
+Em um momento:
+
+Hoshino
+LLM   → local
+voz   → local
+ouvido→ local
+imagem→ cloud
+
+Lilith
+LLM   → cloud 16B
+voz   → cloud
+ouvido→ local
+imagem→ cloud
+
+Alistair
+LLM   → segundo PC
+
+Cinco minutos depois:
+
+Hoshino
+LLM → cloud
+
+Lilith
+LLM → local
+
+Alistair
+LLM → PC principal
+
+Sem mudar memória, identidade ou “quem elas são”.
+
+O worker recebe apenas:
+
+contexto necessário
++
+pedido
++
+configuração da entidade
+
+e devolve:
+
+resultado
+
+A experiência continua sendo registrada no PC principal.
+
+---
+
+# O roteador de recursos
+
+Eu colocaria uma camada única:
+
+Resource / Capability Router
+
+Cada capacidade teria múltiplos providers:
+
+llm.hoshino
+├── local_qwen9b
+├── cloud_16b
+└── cloud_backup
+
+llm.lilith
+├── local_qwen9b
+├── cloud_16b
+└── cloud_backup
+
+tts
+├── local
+└── cloud
+
+stt
+├── local
+└── cloud
+
+diarization
+├── local
+└── cloud
+
+image
+├── local_qwen_image
+└── cloud_qwen_image
+
+A escolha automática deveria considerar:
+
+latência
+fila atual
+VRAM livre
+RAM livre
+velocidade
+qualidade necessária
+custo/hora
+internet
+privacidade
+modelo já carregado
+tempo estimado para carregar outro modelo
+
+Esse último ponto é muito importante.
+
+Não adianta trocar:
+
+9B → 16B → imagem → 9B → TTS → 16B
+
+a cada poucos segundos.
+
+Precisamos de **stickiness**: se um modelo já está quente/carregado, existe um bônus para continuar usando aquele nó.
+
+---
+
+# E sim: pagar por hora muda bastante a estratégia
+
+Em serviços como RunPod Pods e Vast.ai on-demand, você paga pelo tempo em que a máquina está alugada, não por token individual. RunPod inclusive cobra os Pods por segundo; Vast também usa cobrança por segundo.
+
+Então, se alugamos uma GPU por uma hora:
+
+GPU ligada durante 1h
+
+faz sentido aproveitar aquela hora para manter:
+
+LLM maior
+TTS
+STT
+diarização
+embedding
+talvez geração de imagem
+
+no mesmo servidor, **desde que memória e concorrência permitam**.
+
+Isso é diferente de uma API cobrada por token.
+
+---
+
+# Um 16B na nuvem faz bastante sentido
+
+Um modelo de aproximadamente 14–16B quantizado em 4–5 bits pode ser uma ótima camada superior.
+
+Com **24 GB de VRAM**, normalmente já dá para trabalhar com um 16B quantizado, embora contexto, KV cache, engine e outros modelos residentes reduzam a folga.
+
+Com **48 GB**, muda bastante:
+
+16B quantizado
++
+contexto grande
++
+TTS
++
+STT
++
+outros serviços
+
+ficam muito mais confortáveis.
+
+Eu não tentaria deixar necessariamente o gerador de imagem residente junto o tempo inteiro. Ele pode ser carregado quando necessário ou ocupar outra GPU quando justificável.
+
+---
+
+# Preços atuais em reais
+
+Usei a cotação atual de aproximadamente **US$1 = R$4,97**.
+
+No **RunPod Community Cloud**, os preços publicados atualmente são estes: A5000 24 GB por US$0,16/h, RTX 3090 por US$0,22/h, RTX 4090 por US$0,34/h, A6000 48 GB por US$0,33/h e A40 48 GB por US$0,35/h.
+
+| GPU | VRAM | Aproximado em R$/h | 100 h/mês | 24/7 ~720 h |
+|---|---:|---:|---:|---:|
+| RTX A5000 | 24 GB | **R$0,80/h** | ~R$80 | ~R$572 |
+| RTX 3090 | 24 GB | **R$1,09/h** | ~R$109 | ~R$787 |
+| RTX A6000 | 48 GB | **R$1,64/h** | ~R$164 | ~R$1.181 |
+| RTX 4090 | 24 GB | **R$1,69/h** | ~R$169 | ~R$1.216 |
+| A40 | 48 GB | **R$1,74/h** | ~R$174 | ~R$1.252 |
+| RTX 5090 | 32 GB | **R$3,43/h** | ~R$343 | ~R$2.469 |
+
+Esses valores são conversões aproximadas; armazenamento persistente e outros recursos podem acrescentar custo.
+
+## Aqui aparece um vencedor interessante
+
+Para **nosso projeto**, eu considero a:
+
+RTX A6000 48 GB
+≈ R$1,64/h
+
+extremamente interessante.
+
+Ela custa praticamente o mesmo por hora que uma 4090 Community:
+
+4090   24 GB → ~R$1,69/h
+A6000  48 GB → ~R$1,64/h
+
+A 4090 é mais rápida em compute bruto, mas para:
+
+vários modelos simultâneos
+LLM 16B
+TTS
+STT
+contextos grandes
+
+os **48 GB de VRAM** provavelmente valem mais para nós.
+
+---
+
+# E existe uma opção ainda mais barata
+
+Uma A5000:
+
+24 GB
+~R$0,80/h
+
+poderia virar nosso nó cloud “normal”.
+
+Por exemplo:
+
+A5000 cloud
+├── 16B quantizado
+├── TTS
+├── STT
+└── embeddings
+
+E só alugamos algo de 48 GB quando realmente necessário.
+
+Com 100 horas mensais:
+
+~R$80/mês
+
+Isso é bem razoável para experimentação.
+
+---
+
+# A RTX 3090 também é muito atraente
+
+O RunPod Community mostra:
+
+RTX 3090
+24 GB VRAM
+125 GB RAM
+16 vCPU
+US$0,22/h
+≈ R$1,09/h
+
+Para o nosso uso isso é particularmente interessante porque não ganhamos somente GPU.
+
+Também recebemos bastante RAM de sistema.
+
+Então poderíamos colocar nessa máquina:
+
+LLM 16B
+Whisper
+TTS
+embeddings
+cache
+serviços Python
+
+sem ficar espremidos em RAM.
+
+---
+
+# Vast.ai pode ficar ainda mais barato, mas é variável
+
+O Vast funciona como marketplace, então não existe um preço único fixo. A própria plataforma explica que os preços mudam conforme oferta e demanda, e que instâncias interruptíveis podem ficar 50% ou mais abaixo de on-demand.
+
+Exemplos recentes encontrados no marketplace:
+
+RTX 3090 24 GB
+US$0,224/h
+≈ R$1,11/h
+
+RTX A6000
+US$0,409/h
+≈ R$2,03/h
+
+Mas no Vast devemos verificar:
+
+confiabilidade do host
+largura de banda
+região
+armazenamento
+preço de download/upload
+duração máxima
+
+Então eu vejo Vast mais como:
+
+caçador de oportunidade
+
+e RunPod como:
+
+infraestrutura previsível
+
+---
+
+# Hyperstack
+
+O preço oficial atual da A6000 48 GB on-demand é:
+
+US$0,50/h
+≈ R$2,48/h
+
+e o serviço cobra por minuto.
+
+Não bate o RunPod Community em preço, mas é uma opção mais convencional de VM dedicada.
+
+---
+
+# Eu montaria três níveis de cloud
+
+Em vez de escolher “um servidor”, escolheríamos **classes de poder**.
+
+| Classe | GPU exemplo | Custo aproximado | Uso |
+|---|---|---:|---|
+| **Cloud leve** | A5000 24 GB | R$0,80/h | 9B/16B quantizado, TTS/STT |
+| **Cloud normal** | RTX 3090 24 GB | R$1,09/h | LLM maior + bastante RAM |
+| **Cloud pesado** | A6000 48 GB | R$1,64/h | múltiplos modelos, contextos grandes, imagem |
+
+O Resource Manager escolhe automaticamente.
+
+---
+
+# Exemplos reais de comportamento
+
+Se somente Hoshino estiver conversando:
+
+Hoshino 9B → PC principal
+Lilith → dormente
+Alistair → segundo PC
+
+cloud → desligada
+custo = R$0
+
+Se você começar uma conversa longa com as duas:
+
+Hoshino 9B → local
+
+Lilith 16B → cloud A5000/3090
+
+TTS → local
+STT → local
+
+Se a GPU principal começar Qwen-Image:
+
+GPU local
+→ Qwen-Image
+
+Hoshino
+→ cloud
+
+Lilith
+→ cloud ou fila curta
+
+voz
+→ CPU/local
+
+Quando a imagem terminar:
+
+Hoshino volta → local
+Lilith volta → local
+cloud fica ociosa por alguns minutos
+↓
+se ninguém precisar
+desliga
+
+---
+
+# Precisamos evitar ligar/desligar a cloud rápido demais
+
+Eu colocaria uma janela de retenção.
+
+Exemplo:
+
+cloud foi necessária
+↓
+liga
+↓
+permanece ativa por pelo menos 20–30 min
+↓
+se houver trabalho recente:
+continua
+↓
+se estiver realmente ociosa:
+desliga
+
+O tempo pode ser aprendido depois com telemetria.
+
+Se percebemos que uma nova demanda está chegando:
+
+Hoshino ativa
+Lilith acordou
+imagem solicitada
+
+o Resource Manager percebe que haverá conflito e **já começa a preparar o worker cloud**.
+
+---
+
+# O segundo PC
+
+Eu também mudaria um pouco nossa definição anterior.
+
+Não diria:
+
+> “Alistair mora no segundo PC.”
+
+Ele continua pertencendo ao PC principal.
+
+Melhor:
+
+Alistair Central
+→ PC principal
+
+Alistair Worker preferencial
+→ Athlon 3000G
+
+Se o Athlon morrer:
+
+Alistair Worker
+→ PC principal
+
+Assim seguimos sua regra central:
+
+> **nenhuma entidade depende de máquina externa para existir.**
+
+O Athlon pode assumir ainda:
+
+Alistair 4B
+jobs de fundo
+event bus
+indexação de memória
+embeddings leves
+backups
+watchers
+processamento batch
+
+e vamos descobrir em testes o que realmente vale a pena colocar nele.
+
+---
+
+## A regra que eu adotaria
+
+A partir de agora, eu separaria arquitetura em três conceitos:
+
+ENTIDADE
+Hoshino / Lilith / Alistair
+→ sempre local e persistente
+
+CAPACIDADE
+LLM / TTS / STT / imagem / visão
+→ pode migrar
+
+EXECUTOR
+PC principal / Athlon / cloud
+→ descartável e substituível
+
+Isso é muito forte arquiteturalmente.
+
+Uma entidade não é “o processo Ollama dela”.
+
+O LLM é **uma capacidade cognitiva que ela usa**.
+
+Portanto Hoshino poderia passar de:
+
+Qwen 9B local
+
+para:
+
+16B cloud
+
+por uma hora e depois voltar ao 9B local, mantendo:
+
+a mesma memória
+o mesmo estado
+as mesmas relações
+a mesma experiência
+a mesma identidade
+
+Esse é exatamente o tipo de arquitetura que eu pediria ao Codex para implementar: **Capability Router + Resource Manager + fallback local obrigatório + workers efêmeros**. Isso nos dá mais poder sem transformar Hoshino, Lilith e Alistair em dependentes da nuvem.
+
+================================================================================
+USUÁRIO
+================================================================================
+
+Perfeito, mais vamos so ter 2 serviços de servidores o leve e o normal, e agora so temos que otimizar os nossos dois ambientes locais e otimizar de forma inteligente o uso dos servidores 
+
+================================================================================
+ASSISTENTE
+================================================================================
+
+Exato. Eu fecharia a arquitetura em **quatro executores**, mas só **dois tipos de cloud**:
+
+LOCAL
+├── PC principal
+└── PC Athlon
+
+CLOUD
+├── servidor leve
+└── servidor normal
+
+E nada além disso por enquanto.
+
+## 1. Os dois servidores
+
+Eu não amarraria as classes a uma GPU específica. Definimos requisitos e o sistema procura a opção compatível mais barata/disponível.
+
+SERVIDOR LEVE
+├── GPU: ~24 GB VRAM
+├── RAM: preferencialmente 32 GB+
+├── função:
+│   ├── um LLM maior, ~14–16B quantizado
+│   ├── TTS
+│   ├── STT/diarização
+│   └── geração de imagem quando conveniente
+└── objetivo: aliviar o PC principal gastando pouco
+
+SERVIDOR NORMAL
+├── GPU: ~48 GB VRAM
+├── RAM: preferencialmente 64 GB+
+├── função:
+│   ├── Hoshino + Lilith simultaneamente
+│   ├── modelos maiores
+│   ├── imagem pesada
+│   ├── TTS/STT junto
+│   └── períodos de carga alta
+└── objetivo: capacidade, não economia máxima
+
+Assim podemos trocar RunPod/Vast/outro fornecedor depois sem mudar a arquitetura.
+
+---
+
+# 2. PC principal continua sendo soberano
+
+O estado real continua nele:
+
+PC PRINCIPAL
+├── identidade Hoshino
+├── identidade Lilith
+├── identidade Alistair
+├── memórias
+├── relações
+├── estados mentais
+├── world state
+├── histórico
+├── bancos
+├── scheduler
+└── Resource Manager
+
+Os servidores nunca recebem autoridade sobre isso.
+
+Eles recebem algo equivalente a:
+
+execute esta capacidade
+com este contexto
+e devolva o resultado
+
+Portanto, mesmo que uma Hoshino esteja usando um 16B na nuvem naquele momento:
+
+Hoshino ≠ modelo 16B
+
+O modelo é apenas o executor cognitivo daquele momento.
+
+---
+
+# 3. Primeiro ambiente local: PC principal
+
+Aqui precisamos otimizar principalmente **contenção**, porque já há bastante poder computacional.
+
+Eu dividiria os recursos em três classes.
+
+LATÊNCIA CRÍTICA
+├── áudio
+├── VAD
+├── interface
+├── event bus
+└── world state
+
+COGNIÇÃO
+├── Hoshino 9B
+├── Lilith 9B
+└── arbitragem
+
+TRABALHO PESADO
+├── Qwen-Image
+├── indexação grande
+├── reflexão batch
+└── outras tarefas demoradas
+
+O erro seria deixar tudo competir igualmente.
+
+### Prioridade
+
+1. áudio / conversa
+2. LLM que está respondendo
+3. segundo LLM
+4. tarefas interativas
+5. imagem
+6. processamento de fundo
+
+Se você estiver falando com Hoshino enquanto Qwen-Image está gerando:
+
+conversa > imagem
+
+O gerador pode continuar mais lentamente, pausar partes possíveis ou provocar migração de alguma capacidade para cloud.
+
+---
+
+# 4. Segundo ambiente local: Athlon 3000G
+
+Eu o trataria como **worker de fundo**, não como cópia do PC principal.
+
+Inicialmente:
+
+ATHLON
+├── Alistair 4B        ← testar
+├── event consumers
+├── jobs de fundo
+├── embeddings leves
+├── manutenção de memória
+├── indexação
+├── logs
+├── backups
+└── tarefas batch
+
+Mas tudo deve ter fallback:
+
+Athlon online
+→ usa
+
+Athlon lento demais
+→ devolve tarefa
+
+Athlon offline
+→ PC principal assume
+
+O Resource Manager deve aprender quais tarefas realmente compensam mandar para ele.
+
+Por exemplo, se uma tarefa leva:
+
+PC principal = 3 s
+Athlon + rede = 18 s
+
+não vale distribuir.
+
+Mas:
+
+indexação que dura 8 minutos
+e não é urgente
+
+pode perfeitamente sair do PC principal.
+
+---
+
+# 5. O Resource Manager passa a ser essencial
+
+Ele precisa decidir **capacidade por capacidade**.
+
+Não:
+
+"coloque Lilith na nuvem"
+
+mas:
+
+llm.lilith → cloud-light
+tts.lilith → local
+stt → local
+image → cloud-normal
+
+Isso permite combinações muito melhores.
+
+---
+
+## Decisão automática
+
+Eu usaria uma pontuação aproximadamente assim:
+
+score =
+    latência_prevista
+  + contenção_local
+  + tempo_de_carregamento
+  + custo
+  + penalidade_de_rede
+  + penalidade_de_privacidade
+  - bônus_modelo_já_carregado
+  - bônus_executor_ocioso
+
+Não precisa de LLM para fazer isso.
+
+É matemática/regras.
+
+---
+
+# 6. Local deve ganhar por padrão
+
+A política inicial:
+
+LOCAL-FIRST
+
+Cloud só entra quando houver vantagem real.
+
+Exemplo:
+
+Hoshino conversando sozinha
+GPU tranquila
+↓
+local
+
+Não há razão para gastar dinheiro.
+
+---
+
+# 7. Quando ligar o servidor leve
+
+Alguns gatilhos:
+
+GPU local muito ocupada
+
+segunda entidade precisa responder
+enquanto a primeira está ativa
+
+Qwen-Image ocupando a GPU
+
+modelo cloud oferece melhora
+substancial naquela tarefa
+
+fila estimada local passou
+de um limite aceitável
+
+Exemplo:
+
+Hoshino → local 9B
+
+Lilith recebe mensagem
+↓
+GPU já ocupada
+↓
+cloud-light
+↓
+Lilith usa 16B
+
+Esse provavelmente será nosso cenário cloud mais frequente.
+
+---
+
+# 8. Quando subir para o servidor normal
+
+Somente quando o leve deixar de ser suficiente.
+
+Exemplo:
+
+Hoshino ativa
++
+Lilith ativa
++
+imagem sendo gerada
++
+TTS/STT trabalhando
+
+ou:
+
+queremos manter
+dois modelos grandes quentes
+simultaneamente
+
+Então:
+
+cloud-normal
+
+Não teremos uma terceira categoria.
+
+---
+
+# 9. Evitar desperdício por liga/desliga
+
+Precisamos de três estados:
+
+OFF
+WARM
+BUSY
+
+Quando um servidor termina uma tarefa:
+
+BUSY
+↓
+WARM
+
+Ele não desliga imediatamente.
+
+Algo como:
+
+20–30 minutos sem trabalho
+↓
+OFF
+
+O tempo pode ser aprendido depois com telemetria.
+
+Se percebemos que uma nova demanda está chegando:
+
+Hoshino ativa
+Lilith acordou
+imagem solicitada
+
+o sistema pode manter o servidor quente.
+
+---
+
+# 10. Modelos também precisam de "stickiness"
+
+Troca constante de modelo custa muito.
+
+Portanto:
+
+modelo já carregado
+= grande vantagem
+
+Exemplo:
+
+Cloud leve já está com:
+
+16B
+
+Lilith acabou uma resposta.
+
+Cinco minutos depois Hoshino precisa de cloud.
+
+Melhor:
+
+Hoshino → mesmo 16B quente
+
+em vez de descarregar tudo para carregar outra variante quase equivalente.
+
+Identidade continua vindo do contexto da entidade.
+
+---
+
+# 11. Podemos aproveitar a hora contratada
+
+Esse ponto que você mencionou é importante.
+
+Se alugamos a máquina e já estamos pagando pelo período, podemos preencher períodos ociosos com trabalho útil:
+
+conversa terminou
+servidor ainda ficará ligado 20 min
+        ↓
+tem tarefa de fundo?
+        ├── reflexão pendente
+        ├── embeddings
+        ├── resumo de memória
+        ├── geração solicitada
+        └── processamento batch
+
+Mas com uma regra:
+
+tarefas de fundo nunca podem
+atrasar uma demanda interativa nova
+
+Chegou uma conversa:
+
+batch pausa
+→ usuário ganha prioridade
+
+Isso aumenta muito o aproveitamento do dinheiro.
+
+---
+
+# 12. Cloud pode permitir LLMs diferentes
+
+Também concordo com isso.
+
+Não precisamos obrigatoriamente ter:
+
+local 9B
+cloud 9B
+
+Podemos ter:
+
+LOCAL
+Hoshino → Qwen3.5 9B
+Lilith  → Qwen3.5 9B
+
+e:
+
+CLOUD LEVE/NORMAL
+→ 16B
+→ talvez outro modelo mais forte
+→ eventualmente diferentes modelos especializados
+
+Mas eu colocaria um limite importante:
+
+**não mudar de modelo simplesmente porque existe outro disponível.**
+
+A troca precisa justificar:
+
+qualidade
+latência
+carga
+custo
+ou capacidade
+
+Caso contrário teremos variabilidade comportamental desnecessária.
+
+---
+
+# 13. Métricas que precisamos registrar
+
+Para o Resource Manager ficar realmente inteligente:
+
+executor
+modelo
+capacidade
+tempo de fila
+tempo para carregar
+tempo até primeiro token
+tokens/s
+tempo total
+RAM
+VRAM
+CPU
+rede
+falhas
+custo estimado
+
+Depois de algumas semanas ele poderá saber empiricamente:
+
+"Para Lilith em conversa normal:
+local é melhor."
+
+"Com Qwen-Image ativo:
+cloud-light é melhor."
+
+"Para geração 768 alta:
+cloud-normal termina 4x mais rápido."
+
+"Para esse job:
+Athlon é lento demais; manter local."
+
+Aí o roteamento deixa de ser baseado em chute.
+
+---
+
+# Arquitetura final dessa parte
+
+                        PC PRINCIPAL
+                  ┌─────────────────────┐
+                  │ identidade / memória │
+                  │ world state          │
+                  │ estados mentais      │
+                  │ Resource Manager     │
+                  └──────────┬──────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+              ▼              ▼              ▼
+        PC PRINCIPAL       ATHLON       CLOUD ROUTER
+          worker           worker            │
+                                            │
+                                  ┌─────────┴────────┐
+                                  ▼                  ▼
+                              LEVE 24GB          NORMAL 48GB
+
+E qualquer capacidade:
+
+LLM
+TTS
+STT
+diarização
+imagem
+visão
+embeddings
+
+pode ser enviada para um desses executores **sem mover a entidade**.
+
+Acho que aqui fechamos a arquitetura computacional suficientemente bem. O próximo passo não deveria ser inventar mais níveis, e sim **otimizar PC principal + Athlon e implementar/ajustar o Resource Manager para esses quatro destinos exatos**.
+
+================================================================================
+USUÁRIO
+================================================================================
+
+Ótimo agora e só definir quais serão os fornecedores e se tem métodos de pagamento abrangentes
+
+================================================================================
+ASSISTENTE
+================================================================================
+
+Sim. Eu fecharia assim:
+
+## Fornecedores escolhidos
+
+**RunPod = fornecedor principal.** Ele atende tanto o **servidor leve** quanto o **normal**, tem API/CLI maduras para criar, parar e destruir Pods automaticamente, cobrança por segundo e sistema pré-pago de créditos. Isso combina muito bem com o Resource Manager que estamos desenhando.
+
+**gpuLabs = fornecedor de fallback.** Não criamos um terceiro tipo de servidor; ele simplesmente pode fornecer o mesmo `leve` ou `normal` quando RunPod estiver sem estoque, caro demais ou houver problema de pagamento. A API deles permite descobrir ofertas, criar/parar instâncias e gerenciar volumes programaticamente.
+
+Então fica:
+
+CLOUD ROUTER
+│
+├── LEVE
+│   ├── 1ª escolha: RunPod
+│   └── fallback: gpuLabs
+│
+└── NORMAL
+    ├── 1ª escolha: RunPod
+    └── fallback: gpuLabs
+
+Isso preserva **só dois níveis de cloud**, mas elimina dependência de uma única empresa.
+
+## Configurações iniciais
+
+Usando a cotação que acabamos de consultar, aproximadamente **US$1 = R$4,97**, os preços publicados atualmente dão esta referência:
+
+| Classe | Preferência | GPU | VRAM | Preço atual aproximado |
+|---|---|---:|---:|---:|
+| **Leve** | RunPod | RTX A5000 | 24 GB | **~R$1,34/h** |
+| Leve fallback | gpuLabs | A30 | 24 GB | **~R$1,79/h** |
+| Leve fallback rápido | gpuLabs | A5000 | 24 GB | **~R$2,24/h** |
+| **Normal** | RunPod | A40 | 48 GB | **~R$2,44/h** |
+| Normal alternativo | RunPod | A6000 | 48 GB | **~R$2,63/h** |
+| Normal fallback | gpuLabs | A6000 | 48 GB | **~R$2,68/h** |
+| Normal fallback | gpuLabs | A40 | 48 GB | **~R$2,88/h** |
+
+RunPod publica atualmente A5000 a US$0,27/h, A40 a US$0,49/h e A6000 a US$0,53/h. gpuLabs publica A30 a US$0,36/h, A5000 a US$0,45/h, A6000 a US$0,54/h e A40 a US$0,58/h.
+
+Esses preços são de referência; estoque e modalidade podem mudar.
+
+## Pagamento
+
+Aqui a escolha fica especialmente boa.
+
+| Fornecedor | Cartão | PayPal | Cripto | Pré-pago |
+|---|---|---|---|---|
+| **RunPod** | Sim, via Stripe | não encontrei suporte oficial | **Sim** | **Sim** |
+| **gpuLabs** | Sim, via Paddle | **Sim*** | **BTC + USDT** | **Sim** |
+| Vast.ai | Sim | Não | Não | Sim |
+| Hyperstack | Crédito/débito via Stripe | não documentado | não documentado | Sim |
+| TensorDock | Cartão via Stripe | não documentado | não documentado | Sim |
+
+O RunPod documenta cartões Visa, Mastercard, AmEx e outros aceitos pelo Stripe, além de criptomoedas. Também trabalha com créditos pré-pagos, o que é ótimo para colocarmos um teto de gasto.
+
+O **gpuLabs é o mais abrangente em pagamento**. A página de preços lista Visa/Mastercard, Bitcoin e USDT TRC-20; a página oficial de segurança também diz explicitamente que pagamentos por **cartão e PayPal** são processados pela Paddle.
+
+Há uma pequena inconsistência documental: PayPal aparece na página de segurança, mas não aparece entre as opções destacadas na página de preços. Então eu confirmaria que ele aparece no checkout da conta antes de tratá-lo como método garantido.
+
+**Pix não aparece como método oficial documentado** em nenhum dos dois que encontrei.
+
+## Por que eu descartaria Vast como fornecedor inicial
+
+Não porque seja ruim — o preço pode ser excelente. O problema é que para o nosso sistema automático ele acrescenta duas variáveis indesejadas logo de início: marketplace mais heterogêneo e **pagamento apenas por cartões principais via Stripe**; a própria FAQ diz explicitamente que não aceita PayPal nem cripto.
+
+Podemos reconsiderá-lo depois que o Resource Manager estiver maduro.
+
+Hyperstack e TensorDock têm situação parecida em pagamentos: funcionam com cartão/Stripe, mas oferecem menos opções que RunPod + gpuLabs.
+
+## Como eu configuraria o roteador
+
+Não colocaria simplesmente:
+
+LEVE = RunPod A5000
+NORMAL = RunPod A40
+
+como regra rígida.
+
+Colocaria:
+
+LEVE
+VRAM >= 24 GB
+RAM adequada
+preço máximo configurável
+latência aceitável
+
+NORMAL
+VRAM >= 48 GB
+RAM adequada
+preço máximo configurável
+latência aceitável
+
+E então:
+
+1. consultar RunPod
+2. existe GPU compatível abaixo do teto?
+   → sim: usar RunPod
+   → não: consultar gpuLabs
+3. gpuLabs compatível?
+   → usar
+4. nenhum?
+   → permanecer local/fila
+
+Podemos inclusive definir algo como:
+
+LEVE:
+máximo normal = R$2,00/h
+
+NORMAL:
+máximo normal = R$3,00/h
+
+e impedir o sistema de alugar automaticamente algo absurdamente caro só porque a GPU preferida acabou.
+
+Outra proteção importante seria:
+
+saldo cloud
++
+limite diário
++
+limite mensal
++
+limite por hora
+
+O RunPod já utiliza créditos pré-pagos e possui limite padrão de gasto por hora, então isso encaixa muito bem.
+
+### Portanto, decisão fechada
+
+FORNECEDOR PRINCIPAL
+RunPod
+
+FORNECEDOR FALLBACK
+gpuLabs
+
+SERVIDOR LEVE
+24 GB VRAM
+
+SERVIDOR NORMAL
+48 GB VRAM
+
+LOCAL
+sempre disponível
+
+CLOUD
+opcional e automaticamente roteada
+
+E o melhor é que temos redundância também no **pagamento**: cartão nos dois, cripto nos dois em alguma forma, e gpuLabs ainda documenta PayPal. Isso é bem mais robusto do que ficarmos presos a uma única plataforma.
+
+================================================================================
+USUÁRIO
+================================================================================
+
+Veja se isso e possível 
+
+Vamos definir limites de 24 reais por dia e limite maximo de 2,30r por hota para o serviço normal e 1,50r por hora para o leve que vai ser o preferencial e preferencialmente configurações para o serviço leve que custam menos de um real por hora 
+
+================================================================================
+ASSISTENTE
+================================================================================
+
+Sim, é possível — e com os preços atuais os limites que você escolheu são viáveis. Eu só faria o controle **no nosso Resource Manager**, porque os provedores não oferecem exatamente um limite diário em reais como o que queremos.
+
+Cotação usada agora: **US$1 ≈ R$4,95**.
+
+## Limites definitivos
+
+Eu configuraria assim:
+
+ORÇAMENTO CLOUD GLOBAL
+├── limite absoluto por dia: R$24,00
+├── leve:
+│   ├── preferência: < R$1,00/h
+│   └── máximo absoluto: R$1,50/h
+└── normal:
+    └── máximo absoluto: R$2,30/h
+
+Convertendo para o preço em dólar que as APIs normalmente retornam:
+
+preferência leve < R$1,00/h
+→ aproximadamente < US$0,202/h
+
+máximo leve R$1,50/h
+→ aproximadamente US$0,303/h
+
+máximo normal R$2,30/h
+→ aproximadamente US$0,465/h
+
+limite diário R$24
+→ aproximadamente US$4,85/dia
+
+O ideal é **não gravar esses valores em dólar permanentemente**. O sistema guarda os limites em reais e recalcula o teto em USD conforme o câmbio.
+
+## RunPod encaixa muito bem
+
+Os preços atuais do **Community Cloud** são particularmente bons.
+
+| GPU | VRAM | US$/h | ~R$/h | Classe |
+|---|---:|---:|---:|---|
+| RTX A5000 | 24 GB | $0,16 | **R$0,79** | Leve preferencial |
+| RTX 3090 | 24 GB | $0,22 | **R$1,09** | Leve fallback |
+| RTX 4090 | 24 GB | $0,34 | R$1,68 | Fora do limite leve |
+| RTX A6000 | 48 GB | $0,33 | **R$1,63** | Normal preferencial |
+| A40 | 48 GB | $0,35 | **R$1,73** | Normal |
+| L40 | 48 GB | $0,69 | R$3,42 | Bloqueado |
+
+Isso nos dá uma combinação muito boa:
+
+LEVE PRINCIPAL
+RTX A5000 24 GB
+~R$0,79/h
+
+LEVE FALLBACK
+RTX 3090 24 GB
+~R$1,09/h
+
+NORMAL PRINCIPAL
+RTX A6000 48 GB
+~R$1,63/h
+
+NORMAL FALLBACK
+A40 48 GB
+~R$1,73/h
+
+A A5000 atende inclusive à sua preferência de **menos de R$1/h**.
+
+### Secure Cloud
+
+Também é útil como fallback para o leve.
+
+A A5000 Secure atualmente custa $0,27/h, aproximadamente **R$1,34/h**, portanto ainda fica abaixo do limite de R$1,50.
+
+Já no normal:
+
+A40 Secure
+$0,49 ≈ R$2,43/h
+
+A6000 Secure
+$0,53 ≈ R$2,62/h
+
+Os dois ultrapassam R$2,30.
+
+Portanto:
+
+LEVE
+Community preferido
+Secure permitido como fallback
+
+NORMAL
+Community permitido
+Secure bloqueado com os preços atuais
+
+Isso é uma regra muito limpa.
+
+---
+
+## O limite diário de R$24 funciona bem
+
+Veja quanto tempo de GPU isso representa aproximadamente:
+
+| Máquina | R$/h | R$24 permitem |
+|---|---:|---:|
+| A5000 Community | R$0,79 | mais de 24h |
+| RTX 3090 Community | R$1,09 | ~22h |
+| A5000 Secure | R$1,34 | ~18h |
+| A6000 Community | R$1,63 | ~14,7h |
+| A40 Community | R$1,73 | ~13,9h |
+
+Isso tem uma consequência interessante:
+
+**a A5000 Community poderia teoricamente ficar ligada 24 horas e ainda consumir só cerca de R$19 de compute.**
+
+Não significa que faremos isso, porque ligar somente quando necessário continua sendo melhor, mas mostra que o orçamento é bastante utilizável.
+
+---
+
+# Precisamos contar os dois servidores juntos
+
+Os R$24 devem ser:
+
+R$24/dia
+=
+leve
++
+normal
++
+qualquer outro compute cloud
++
+custos associados que decidirmos contabilizar
+
+Não:
+
+R$24 leve
++
+R$24 normal
+
+Exemplo:
+
+A5000 = R$0,79/h
+A6000 = R$1,63/h
+
+ambas simultaneamente
+≈ R$2,42/h
+
+Se ficarem ligadas juntas durante aproximadamente 10 horas, praticamente consumiriam todo o orçamento diário.
+
+Então o padrão seria:
+
+nenhuma cloud
+↓
+leve
+↓
+normal
+
+e apenas quando realmente necessário:
+
+leve + normal simultaneamente
+
+---
+
+# Eu colocaria dois limites: operacional e absoluto
+
+Para impedir que câmbio, arredondamentos e armazenamento façam R$23,98 virar R$24,60, usaria:
+
+LIMITE OPERACIONAL
+R$22,00
+
+LIMITE ABSOLUTO
+R$24,00
+
+Quando chegar a:
+
+R$18
+→ começa a economizar cloud
+
+R$22
+→ não inicia novos jobs não essenciais
+
+R$24
+→ termina/desliga tudo cloud imediatamente
+
+Isso não significa abandonar tarefas importantes. Elas voltam para:
+
+PC principal
+ou
+Athlon
+ou
+fila local
+
+A entidade continua funcionando.
+
+---
+
+# Controle de preço antes de criar qualquer servidor
+
+Nunca devemos pedir:
+
+"crie uma A5000"
+
+e confiar que o preço é o esperado.
+
+O fluxo deveria ser:
+
+consultar ofertas atuais
+        ↓
+converter US$ → R$
+        ↓
+aplicar limite
+        ↓
+GPU atende VRAM?
+        ↓
+preço permitido?
+        ↓
+só então criar
+
+Exemplo do leve:
+
+if vram >= 24GB and preco_brl_h < 1.00:
+    prioridade = EXCELENTE
+
+elif vram >= 24GB and preco_brl_h <= 1.50:
+    prioridade = ACEITAVEL
+
+else:
+    REJEITAR
+
+Normal:
+
+if vram >= 48GB and preco_brl_h <= 2.30:
+    ACEITAR
+else:
+    REJEITAR
+
+---
+
+# gpuLabs entra da mesma maneira
+
+O gpuLabs permite consultar as ofertas por API antes de criar a instância e também expõe endpoints de saldo e transações, então nosso Resource Manager pode fazer exatamente a mesma verificação.
+
+Eles anunciam GPUs a partir de **US$0,17/h (~R$0,84/h)**, mas a página pública que consegui verificar não informa qual GPU/VRAM corresponde necessariamente à oferta mínima. Portanto não vou assumir que essa máquina de R$0,84 possui os nossos 24 GB.
+
+Nosso código simplesmente consulta a oferta ao vivo:
+
+gpuLabs
+↓
+GET ofertas
+↓
+24GB+ e <R$1?
+    → ótimo leve
+
+24GB+ e <=R$1,50?
+    → fallback leve
+
+48GB+ e <=R$2,30?
+    → normal
+
+nenhuma?
+    → não aluga
+
+Isso é melhor do que manter uma tabela fixa.
+
+---
+
+# Proteção contra gasto acidental
+
+RunPod trabalha com créditos pré-pagos, contabiliza recursos continuamente e para Pods quando o saldo chega a zero. A conta possui também um limite geral de gasto, mas o padrão documentado é **US$80/h**, muito maior que aquilo que queremos.
+
+Então **não dependeremos desse limite como proteção principal**.
+
+Teremos:
+
+CAMADA 1
+Resource Manager
+→ R$24/dia
+
+CAMADA 2
+preço máximo por máquina
+→ R$1,50 / R$2,30
+
+CAMADA 3
+créditos pré-pagos
+→ saldo pequeno
+
+CAMADA 4
+provider
+→ proteção contra saldo zerado
+
+Eu também deixaria **auto-recharge desativado inicialmente**. Assim um bug no nosso sistema não consegue transformar um cartão salvo em orçamento infinito.
+
+---
+
+## Política cloud que eu fecharia agora
+
+CLOUD_BUDGET_DAILY_BRL = 24.00
+
+LIGHT_PREFERRED_BRL_H = 1.00
+LIGHT_HARD_MAX_BRL_H = 1.50
+
+NORMAL_HARD_MAX_BRL_H = 2.30
+
+SOFT_DAILY_LIMIT_BRL = 22.00
+HARD_DAILY_LIMIT_BRL = 24.00
+
+### Preferência de hardware atual
+
+LEVE
+1. RunPod Community A5000 ~R$0,79/h
+2. RunPod Community 3090 ~R$1,09/h
+3. RunPod Secure A5000 ~R$1,34/h
+4. gpuLabs oferta válida <=R$1,50/h
+
+NORMAL
+1. RunPod Community A6000 ~R$1,63/h
+2. RunPod Community A40 ~R$1,73/h
+3. gpuLabs oferta 48GB válida <=R$2,30/h
+
+E o mais importante: **essas GPUs são preferências, não regras**. O Resource Manager escolhe a melhor oferta que naquele momento respeite VRAM, desempenho, disponibilidade e os limites em reais.
+
+Com esses valores, o plano é perfeitamente viável e o **servidor leve abaixo de R$1/h não é apenas teórico: atualmente existe a A5000 Community por cerca de R$0,79/h.**
+
+================================================================================
+USUÁRIO
+================================================================================
+
+Então fechamos por aqui tranforme todo o conteúdo dessa conversa num txt, desde daquela mensagem que eu falei que o codex estava implementando as modificações até agora

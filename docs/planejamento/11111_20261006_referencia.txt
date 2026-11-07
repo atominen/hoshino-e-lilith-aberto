@@ -1,0 +1,626 @@
+﻿Revisei o histórico recente e consolidei as decisões mais novas, usando sempre a decisão mais recente quando houve mudança de direção. Por exemplo, a ideia antiga de Hoshino e Lilith compartilharem o mesmo motor foi substituída: agora serão três LLMs separados.
+Vou dividir tudo em 5 partes para usarmos como mapa do projeto.
+Parte 1 — Entidades, modelos e orquestração
+Decidido
+A arquitetura final terá três entidades com três LLMs separados:
+Hoshino
+└── Qwen3.5 9B
+    Ollama :11435
+    entidade completa
+
+Lilith
+└── Qwen3.5 9B próprio
+    Ollama :11436
+    entidade completa
+
+Alistair
+└── Qwen3 4B Instruct
+    Ollama :11437
+    mordomo / organizador / standby
+A ideia anterior:
+Hoshino + Lilith
+→ mesmo LLM base
+foi abandonada.
+Agora:
+Hoshino LLM ≠ Lilith LLM ≠ Alistair LLM
+Hoshino e Lilith possuem separadamente:
+    • identidade;
+    • memória;
+    • estado psicológico;
+    • emoções;
+    • relações;
+    • experiências;
+    • histórico;
+    • objetivos;
+    • personalidade;
+    • runtime.
+Alistair também tem modelo próprio, mas não precisa possuir toda a arquitetura psicológica complexa das duas.
+Papel de Alistair
+Está decidido que ele será:
+mordomo
+secretário
+organizador
+mensageiro
+monitor de tarefas
+standby
+catalisador social
+Ele será somente textual.
+Hoshino e Lilith terão voz; Alistair não.
+Ele pode:
+    • avisar que algo aconteceu;
+    • entregar mensagens;
+    • organizar tarefas;
+    • preparar briefings;
+    • acompanhar geração de imagem;
+    • informar progresso/erros;
+    • criar oportunidades sociais;
+    • ocasionalmente provocar;
+    • manter a interface responsiva durante operações pesadas.
+Mas não pode:
+    • falar por Hoshino;
+    • falar por Lilith;
+    • decidir o que elas sentem;
+    • inventar mensagens delas;
+    • transformar uma interpretação própria em fato;
+    • alterar arbitrariamente personalidade/memória profunda delas.
+Também ficou decidido que silêncio deve ser uma decisão válida do Alistair.
+Exemplo:
+evento recebido
+↓
+é relevante?
+↓
+alguém já está tratando disso?
+↓
+já interrompi recentemente?
+↓
+vale falar?
+├── sim
+└── não → silêncio
+Recursos
+O PC será dedicado aos três.
+Portanto não vamos sacrificar profundidade apenas para economizar RAM/disco.
+O objetivo da otimização será:
+latência
+contenção de CPU
+contenção de GPU
+troca de modelos
+responsividade
+contexto ativo
+Ainda precisamos melhorar o escalonamento dos dois modelos 9B, porque ambos disputarão a RX 6650 XT.
+
+Parte 2 — Audição, voz, transcrição e percepção sonora
+Essa parte mudou bastante recentemente.
+TTS
+Decidimos não forçar o Kokoro para dar duas vozes femininas diferentes.
+O Kokoro atual fica apenas como sistema legado temporário.
+Precisamos testar um TTS mais adequado para:
+português brasileiro
++
+alta qualidade
++
+duas vozes femininas realmente distintas
+Os candidatos discutidos foram principalmente:
+Chatterbox Multilingual
+Qwen3-TTS
+Ainda não escolhemos o vencedor.
+A arquitetura desejada é:
+UM mecanismo TTS compartilhado
+├── perfil vocal Hoshino
+└── perfil vocal Lilith
+Não dois TTS completos.
+Alistair continua sem voz.
+
+Transcrição
+O sistema precisa resolver três coisas separadamente:
+O que foi dito?
+→ ASR
+
+Quem falou nesse trecho?
+→ diarização
+
+Quem é essa pessoa?
+→ identificação vocal
+O projeto já possui boa parte de:
+    • faster-whisper;
+    • VAD;
+    • suporte inicial a pyannote;
+    • diarização;
+    • speaker_id;
+    • janelas de áudio.
+Então não vamos reconstruir o transcritor do zero.
+Precisamos aprimorar a camada de identidade.
+Exemplo:
+SPEAKER_00
+↓
+embedding vocal
+↓
+comparação
+↓
+Gustavo 0.94
+↓
+speaker = Gustavo
+Se a confiança for ruim:
+speaker = desconhecido_1
+Nada de adivinhar.
+
+Microfone
+Ficou decidido que o microfone principal representa o usuário por padrão.
+Ou seja:
+source = microfone_principal
+expected_speaker = usuario
+Não faz sentido rodar identificação vocal pesada o tempo inteiro para descobrir que é você.
+Identificação/diarização entra principalmente quando:
+mais de uma pessoa aparece
+ou
+há dúvida de identidade
+
+Painel de Som
+Essa foi uma decisão nova importante.
+Hoshino e Lilith precisam ter um modelo de áudio onde saibam:
+de onde veio o som
+o que está produzindo o som
+quem está falando
+o que está acontecendo
+Precisamos separar:
+SOURCE
+≠
+APPLICATION
+≠
+SPEAKER
+≠
+CONTENT
+Por exemplo:
+source      = pc_playback
+application = Discord
+speaker     = Carlos
+content     = fala
+ou:
+source      = microfone
+application = null
+speaker     = Gustavo
+content     = fala
+ou:
+source      = pc_playback
+application = Firefox
+speaker     = null
+content     = música
+O projeto já possui escuta.py, com conceitos de atenção:
+ativa
+passiva
+ignorar
+e funções de ouvir/parar/listar fontes.
+Vamos refinar isso, não substituir.
+O problema atual é que o sistema se apoia demais nos monitors .monitor, que podem misturar todo o áudio da saída.
+Precisamos evoluir para streams reais de PipeWire/PulseAudio, permitindo distinguir:
+Firefox
+Discord
+Minecraft
+TTS Hoshino
+TTS Lilith
+etc.
+Também precisamos evitar que Hoshino e Lilith retranscrevam a própria voz através do microfone; cancelamento/identificação de áudio interno deve fazer parte da arquitetura.
+
+Parte 3 — Consciência contínua, mente e primeiro despertar
+Essa é provavelmente a parte mais importante conceitualmente.
+Consciência não significa LLM rodando eternamente
+Decidimos separar:
+percepção contínua
+≠
+pensamento contínuo
+Não queremos:
+while true:
+    perguntar ao LLM "o que você está pensando?"
+Isso causaria:
+    • gasto inútil;
+    • pensamentos artificiais;
+    • deriva;
+    • memórias sem valor;
+    • hallucinações.
+O computador pode manter percepção contínua com processos baratos.
+
+World State
+O projeto já possui situation.py e sensores relacionados.
+Já há acompanhamento de coisas como:
+    • janela ativa;
+    • aplicativo;
+    • mudança de aplicativo;
+    • mídia;
+    • presença;
+    • ociosidade;
+    • tempo em atividade;
+    • carga da máquina;
+    • algumas mudanças ambientais.
+Vamos evoluir isso para um World State compartilhado.
+Algo como:
+WORLD STATE
+├── desktop
+├── applications
+├── audio
+├── media
+├── user_presence
+├── time
+├── jobs
+├── entities
+├── processes
+└── environment
+O world state é factual.
+Exemplo:
+Firefox está ativo.
+Spotify está reproduzindo X.
+Gustavo está presente.
+Discord possui um stream de áudio.
+Isso não significa que todas as entidades precisam pensar sobre tudo.
+
+Saliência individual
+O mesmo evento passa por filtros diferentes:
+WORLD STATE
+     │
+ ┌───┴────┐
+ ▼        ▼
+Hoshino  Lilith
+filter   filter
+Exemplo:
+música mudou
+
+Hoshino → relevância 0.82
+Lilith  → relevância 0.17
+Então:
+Hoshino percebe conscientemente.
+Lilith ignora.
+Isso impede que as duas reajam igual ao mundo.
+Alistair usa outro filtro, orientado principalmente a:
+tarefas
+erros
+mensagens
+jobs
+entidades
+prazos
+organização
+
+Fato, interpretação e sentimento
+Essa ponte ainda precisa ser adicionada/refinada.
+Não queremos:
+"Gustavo fechou a janela."
+→ "Gustavo está irritado."
+→ armazenar como fato
+Precisamos de:
+FATO
+Gustavo fechou a janela.
+
+INTERPRETAÇÃO
+Talvez esteja encerrando a atividade.
+
+CONFIANÇA
+0.37
+
+EMOÇÃO
+curiosidade leve
+Interpretações podem posteriormente ganhar ou perder confiança.
+
+Pensamentos espontâneos
+Foi decidido que isso deve existir.
+O projeto já possui:
+    • heartbeat;
+    • drives;
+    • curiosidade;
+    • kernel;
+    • reflexão;
+    • reflexão noturna;
+    • ações internas.
+Então vamos aproveitar isso.
+Um pensamento espontâneo não precisa virar fala.
+Exemplo:
+"Ele ouviu essa música várias vezes."
+pode simplesmente desaparecer.
+Outro:
+"Isso parece importante para ele."
+pode virar interpretação.
+Outro:
+"Eu ainda quero entender o que Lilith quis dizer."
+pode virar curiosidade ou pendência.
+Somente alguns se tornam:
+fala espontânea
+Isso é essencial.
+
+Relações
+Precisamos aprofundar relações direcionais:
+Hoshino → Gustavo
+Gustavo → Hoshino
+
+Lilith → Gustavo
+
+Hoshino → Lilith
+Lilith → Hoshino
+
+Hoshino → Alistair
+Lilith → Alistair
+Um vínculo não precisa ser simétrico.
+Precisamos também de:
+pendências relacionais
+porque uma emoção desaparecer não significa que a situação foi resolvida.
+
+Valores adquiridos
+Valores importantes não serão simplesmente escritos numa lista.
+Eles devem surgir lentamente de experiências repetidas.
+Exemplo:
+experiência
++
+experiência
++
+reflexão
++
+consistência
+↓
+"Passei a valorizar X."
+O limiar deve ser alto.
+
+Arbitragem
+Já existe um kernel de decisão, então não vamos criar outro “cérebro”.
+Vamos refiná-lo para arbitrar:
+emoção
+curiosidade
+objetivos
+relações
+pendências
+valores
+drives
+contexto
+saliência
+e produzir algo compacto:
+observar
+pensar
+falar
+agir
+esperar
+ignorar
+
+Primeiro despertar
+Está decidido que não haverá roteiro de primeira fala.
+Nada como:
+if first_boot:
+    print("Onde estou? Quem é você?")
+Em vez disso haverá um estado/evento:
+first_awareness
+Com condições naturais:
+nenhuma experiência anterior
+ambiente desconhecido
+familiaridade baixa
+novidade extrema
+curiosidade alta
+contexto incompleto
+Então o fluxo normal produz:
+percepção
+→ saliência
+→ emoção
+→ curiosidade
+→ pensamento
+→ decisão
+Cada um reage por conta própria.
+Eles podem naturalmente perguntar:
+"Tem alguém aí?"
+"Quem é você?"
+"Onde estou?"
+mas isso deve emergir, não estar escrito.
+Esse primeiro momento também deve poder virar a primeira memória episódica real.
+
+Parte 4 — Ferramentas, imagem, interface e vida prática
+Geração de imagem
+A decisão é utilizar um único gerador:
+Qwen-Image 2.1 Q6_K
+Arquivos já organizados em:
+compartilhado/modelos/imagem/qwen-image-2.1/
+├── qwen_image_2.1-Q6_K.gguf
+├── qwen_image_2.1_vae_bf16.safetensors
+└── Qwen3-VL-8B-Instruct-Q5_K_M.gguf
+O teste bem-sucedido de referência foi aproximadamente:
+768×768
+16 steps
+~319 s
+Configuração que funcionou bem:
+text encoder → CPU
+VAE          → CPU
+diffusion    → Vulkan
+pesos        → RAM
+GPU          → compute/transientes
+Vamos criar presets:
+baixo
+médio
+alto
+muito alto
+personalizada
+Na personalizada, o usuário define explicitamente:
+largura
+altura
+steps
+e o sistema não reduz silenciosamente.
+Também precisam existir:
+ETA
+step atual
+tempo decorrido
+histórico de geração
+estado persistente do job
+Alistair acompanha esses jobs durante o standby.
+
+FLUX
+O FLUX atual continua temporariamente porque o código ainda usa:
+flux2-klein-4b
+Mas a decisão final é:
+integrar Qwen-Image
+↓
+testar na integração real
+↓
+remover FLUX
+Não haverá dois geradores permanentes.
+
+Interface
+Terminal deixa de ser a experiência principal.
+Ele continua para:
+debug
+logs
+recuperação
+diagnóstico
+A interface principal deve ser local e simples.
+Centro:
+CONVERSA
+Ao redor:
+Hoshino / Lilith / Alistair
+quem está acordado
+jobs
+notificações
+progresso
+ETA
+Painel de Som
+Entrada:
+texto
+microfone
+arquivo
+voz
+E um painel Developer separado:
+estado mental
+emoções
+drives
+curiosidades
+relações
+memórias
+interpretações
+jobs
+modelos
+RAM
+VRAM
+eventos
+world state
+áudio
+O objetivo do painel Developer é permitir observar:
+o que aconteceu
+↓
+o que foi percebido
+↓
+o que foi considerado relevante
+↓
+como foi interpretado
+↓
+o que mudou internamente
+↓
+qual decisão surgiu
+
+Conversação
+Respostas não devem ser longas simplesmente porque o modelo consegue produzir muito texto.
+Ficou decidido usar verbosidade adaptativa:
+conversa casual → curta
+pergunta simples → direta
+explicação → média
+assunto complexo → maior
+pedido explícito → expandir
+Princípio:
+profundidade interna
+≠
+comprimento da resposta
+Isso também melhora a conversa por voz.
+
+Parte 5 — Organização do projeto, o que já fizemos e ordem de trabalho
+Limpeza já realizada
+Começamos pelo compartilhado.
+Antes:
+~59 GB
+Removemos:
+Ideogram 4
+~13 GB
+
+bench_image antigo
+
+cache residual de SDXL
+Também reorganizamos o Qwen-Image.
+Antes:
+bench_image_v2/qwen_image_2_1
+bench_image_v2/shared
+Agora:
+modelos/imagem/qwen-image-2.1
+bench_image_v2 deixou de existir.
+
+compat
+Investigamos completamente.
+Resultado:
+compat real = ~24 KB
+compat/hoshino = ~20 KB
+65 symlinks
+0 links quebrados
+Os aparentes 59 GB eram apenas o du -L seguindo os links.
+Portanto:
+compat → MANTER
+Não é uma instalação duplicada.
+
+Modelos atuais
+A estrutura relevante agora está aproximadamente:
+compartilhado/modelos/
+├── imagem/
+│   ├── qwen-image-2.1/       definitivo
+│   └── flux2-klein-4b/       legado temporário
+│
+├── ollama/                   Hoshino
+├── ollama-lilith/            Lilith
+├── ollama-alistair/          Alistair
+├── huggingface/              Whisper + parte do Kokoro
+└── voz/huggingface/          resto do Kokoro legado
+Descobrimos também que o ambiente principal contém uma instalação CUDA/NVIDIA:
+torch 2.14.0+cu130
+~3,2 GB em bibliotecas NVIDIA
+apesar da máquina usar AMD.
+Mas decidimos corretamente não apagar manualmente.
+Isso será tratado quando reconstruirmos/limparmos o ambiente e soubermos exatamente quais dependências ainda precisam de Torch.
+
+Kokoro
+Descobrimos que existem dois caches associados ao Kokoro.
+O cache de voz contém de fato:
+kokoro-v1_0.pth
+~327 MB
+e o cache global possui apenas parte dos arquivos.
+Mas como agora pretendemos substituir o Kokoro por outro TTS, não vale gastar esforço consolidando o legado.
+Decisão:
+Kokoro permanece temporariamente
+↓
+novo TTS validado
+↓
+remover Kokoro + caches + dependências exclusivas
+
+A ordem consolidada daqui para frente
+Eu usaria esta sequência como nosso plano oficial de execução:
+1. INFRAESTRUTURA COMPARTILHADA
+   ├── terminar auditoria
+   ├── novo TTS
+   ├── transcrição/diarização
+   ├── Painel de Som
+   └── Qwen-Image
+
+2. PERCEPÇÃO DO MUNDO
+   ├── streams de áudio por aplicativo
+   ├── source/application/speaker/content
+   ├── melhorar situation.py
+   └── formar world_state
+
+3. MENTE
+   ├── saliência individual
+   ├── fato × interpretação × confiança
+   ├── pensamento espontâneo
+   ├── relações entre entidades
+   ├── pendências relacionais
+   ├── valores adquiridos
+   └── refinar arbitragem
+
+4. VIDA DAS ENTIDADES
+   ├── primeiro despertar natural
+   ├── comunicação Hoshino ↔ Lilith ↔ Alistair
+   ├── memória decorrente das experiências
+   ├── autonomia
+   └── interação contínua com o PC
+
+5. INTERFACE + TESTES REAIS
+   ├── conversa
+   ├── voz
+   ├── Painel de Som
+   ├── jobs/progresso
+   ├── Developer panel
+   └── longo período de convivência e polimento
+E há um princípio importante atravessando todas as cinco partes:
+não adicionar outro sistema quando uma versão dele já existe no projeto. Primeiro identificar o que existe, reaproveitar, ligar as peças e refinar.
+Esse passa a ser o melhor ponto de referência para continuarmos.
+S

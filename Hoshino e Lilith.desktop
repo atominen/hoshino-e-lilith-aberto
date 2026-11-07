@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Hoshino e Lilith
+Comment=Central local de identidades, mensagens e recursos
+Exec=/bin/bash -lc "exec '/home/gustavo/hoshino e lilith/iniciar_entidades.py'"
+Path=/home/gustavo/hoshino e lilith
+Terminal=false
+Icon=/home/gustavo/hoshino e lilith/desktop/hoshino-e-lilith.svg
+StartupWMClass=hoshino-e-lilith
+StartupNotify=true
+Categories=Utility;

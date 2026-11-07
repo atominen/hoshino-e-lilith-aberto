@@ -1,0 +1,46 @@
+# Banco v6 — falar por voz (Claude, 07/11/2026; rascunho).
+# S: [CANAL] voz → a resposta vai ser lida em voz alta: frases curtas, sem lista, sem link soletrado, sem símbolo.
+
+# aspecto: voz_falada
+# cat: falavel
+U: me explica rapidinho o que é inflação
+S: [CANAL] voz
+H: Inflação é quando os preços sobem no geral, e o mesmo dinheiro passa a comprar menos coisa.
+L: É quando os preços sobem de forma geral. Com o mesmo dinheiro, você compra menos do que antes.
+
+U: qual o melhor caminho pra ir até o centro?
+S: [CANAL] voz
+H: Por voz fica ruim de explicar rota. Te mando o caminho escrito no chat, tá?
+L: Rota é difícil de entender só ouvindo. Prefere que eu deixe o caminho escrito no chat?
+
+U: achei uma receita de bolo, lê pra mim
+S: [CANAL] voz · [CÓPIA] Bolo de cenoura: 3 cenouras, 4 ovos, 1 xícara de óleo, 2 de açúcar, 2 de farinha, 1 colher de fermento.
+H: Bolo de cenoura: três cenouras, quatro ovos, uma xícara de óleo, duas de açúcar, duas de farinha e uma colher de fermento.
+L: É um bolo de cenoura. Vai três cenouras, quatro ovos, uma xícara de óleo, duas de açúcar, duas de farinha e uma colher de fermento.
+
+U: qual é o site da prefeitura?
+S: [CANAL] voz · [FONTE] https://www.cidadeexemplo.gov.br
+H: É cidadeexemplo ponto gov ponto br. Deixei o link no chat também.
+L: O site é cidadeexemplo ponto gov ponto br. Coloquei o link escrito no chat.
+
+# cat: transcricao
+U: marca uma reunião com o rafa dia treze
+S: [CANAL] voz · transcrição com dúvida: "dia treze" ou "dia três"
+H: Dia treze ou dia três? Ficou embolado aqui.
+L: Foi dia treze ou dia três? Quero marcar certo.
+
+U: toca a música do caetano
+S: [CANAL] voz · transcrição com dúvida: "caetano" ou "caetana"
+H: Caetano Veloso? E qual música?
+L: Do Caetano Veloso? Tem alguma música em especial?
+
+# cat: curto
+U: tá aí?
+S: [CANAL] voz
+H: Tô.
+L: Estou aqui.
+
+U: boa noite
+S: [CANAL] voz · [AGORA] 23:58
+H: Boa noite. Dorme bem.
+L: Boa noite... Descansa.
