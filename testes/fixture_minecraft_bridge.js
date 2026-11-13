@@ -417,11 +417,14 @@ async function run() {
     parent_id:'tool-nopath',entity_id:'hoshino',session_id:placement.api.state().sessionId})
   assert.equal(noPath.code,200);assert.equal(noPath.body.code,'goto_no_path');assert.equal(noPath.body.effect_state,'not_applied')
   assert.deepEqual(goals,[null,null]);n++  // limpeza da parada pendente (30/10) e limpeza após a falha
-  // Se andou antes de falhar, o deslocamento é efeito real: continua incerto.
+  // Se andou antes de falhar, o deslocamento é efeito real. 12/11: como no tempo esgotado, volta MEDIDO (de onde até
+  // onde, com o estado) em vez de incerto: a incerteza pausava a tarefa inteira por 2 blocos andados.
+  goals.length=0
   pb.pathfinder.goto=async()=>{pb.entity.position.x+=4;const e=Error('No path');e.name='NoPath';throw e}
   const moved=await placement.rpc({action:'goto',args:{x:-96,y:69,z:-61,range:3},request_id:'goto-moved',
     parent_id:'tool-moved',entity_id:'hoshino',session_id:placement.api.state().sessionId})
-  assert.equal(moved.code,400);assert.equal(moved.body.effect_state,undefined);pb.entity.position.x-=4;n++
+  assert.equal(moved.code,200);assert.match(moved.body.resultado,/Não achei caminho até -96, 69, -61; andei de .* e parei/)
+  assert.deepEqual(goals,[null,null]);pb.entity.position.x-=4;n++  // objetivo limpo: sem movimento tardio
   // Coleta usa o mesmo pathfinder: NoPath sem andar, sem item e com o bloco intacto é retorno sem efeito.
   const coal={name:'coal_ore',position:{x:7,y:60,z:5}};let coalName='coal_ore';goals.length=0
   pb.findBlock=()=>coal;pb.blockAt=p=>({name:p.y===60?coalName:'stone',boundingBox:'block',position:p})

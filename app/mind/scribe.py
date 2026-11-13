@@ -36,6 +36,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core import bd  # noqa: E402
 from memory import knowledge_store as saber  # noqa: E402
+from memory.records import FONTE_BRONZE  # noqa: E402
 from mind import affect, personality  # noqa: E402
 import config  # noqa: E402
 
@@ -86,13 +87,15 @@ def _atribuir(achados, origem):
     subject = origin['sujeito_id']
     name = next((a['nome_detectado'] for a in achados if a.get('nome_detectado')), origin['sujeito_nome'])
     # O conteúdo declarado não pode renomear a autoria autenticada do transporte.
-    author_name = name if origin['autor_tipo'] == 'humano' and origin['autor_nome'] in {'usuario', 'usuário'} else origin['autor_nome']
+    # 07/11: "alguém" é o nome provisório da pessoa local antes de ela se apresentar; a origem leva o nome declarado.
+    author_name = name if origin['autor_tipo'] == 'humano' and origin['autor_nome'] in {'usuario', 'usuário', 'alguém', 'alguem'} else origin['autor_nome']
     origin = dict(origin, sujeito_nome=name, autor_nome=author_name,
                   basis='informacao_declarada_nao_verificada_externamente')
     for a in achados:
         a['origem'] = origin
         a['entidades'] = [f'participante:{subject}', name]  # objeto comum não é identidade do sujeito
-        a['conteudo'] = a['conteudo'].replace('A pessoa com quem falo', name).replace('O usuário', name).replace('do usuário', f'de {name}').replace('com o usuário', f'com {name}').replace('Esta pessoa', name)
+        if not a.get('nome_detectado'):  # 07/11: na memória do próprio nome a troca dava "Gustavo se chama Gustavo"
+            a['conteudo'] = a['conteudo'].replace('A pessoa com quem falo', name).replace('O usuário', name).replace('do usuário', f'de {name}').replace('com o usuário', f'com {name}').replace('Esta pessoa', name)
         if subject != 'usuario':
             a['chave'] = f"{a.get('chave', 'declaracao')}:participante:{subject}"
         if origin['autor_tipo'] != 'humano':
@@ -139,7 +142,7 @@ PAPEL_ACAO = re.compile(
     r"\beu (?:te |lhe )?(?:criei|fiz|programei|montei|constru[ií]|instalei)\b", re.IGNORECASE)
 PAPEL_TITULO = re.compile(
     r"\b(?:sou|fui)\b[^.?!\n]{0,60}?\b(?:seu|sua|o|a)\s+"
-    r"(?:criador|criadora|dono|dona|respons[áa]vel)\b", re.IGNORECASE)
+    r"(?:criador|criadora|dono|dona|respons[áa]?vel)\b", re.IGNORECASE)  # 07/11: "responsvel" digitado
 PAPEL_PERGUNTA = re.compile(r"\bquem\s+(?:te|lhe|a)\s+(?:criou|fez|programou)", re.IGNORECASE)
 OCUPACAO_SUFIXO = re.compile(
     r"\b(?:eu\s+)?sou\s+(?:um[a]?\s+)?([a-zà-ú]{4,20}(?:or|ora|ista|eiro|eira|"
@@ -158,8 +161,17 @@ MARCADOR_LUGAR = re.compile(
     r"\b(?:eu )?(?:moro|vivo|estou morando)\s+(?:em|no|na)\s+([^.,;!?\n]{3,50})",
     re.IGNORECASE)
 MARCADOR_PROPRIEDADE = re.compile(
-    r"\bm(?:eu|inha)\s+([a-zà-ú][\w\sà-ú]{2,28}?)\s+(?:é|e|tem|possui)\s+"
+    r"\bm(?:eu|inha)\s+([a-zà-ú][\w\sà-ú]{2,28}?)\s+(é|e|tem|possui)\s+"
     r"(?:um[ a]?\s+)?([^.,;!?\n]{2,45})", re.IGNORECASE)
+# 07/11 (teste de uso): "o tank t34 sovietico, ele e meu favorito e encontre um manga…" virou "favorito = encontre um
+# manga de luta com tema sombrio ch". Sem acento, "e" pode ser "é" ou "e" (conjunção): seguido de pedido ou pronome é
+# conjunção. E em "X, ele é meu favorito" o favorito é o X.
+_E_CONJUNCAO = re.compile(r"^(?:me|te|nos|encontr\w*|procur\w*|busc\w*|pesquis\w*|abr\w*|mand\w*|envi\w*|fa[cç]\w*|"
+                          r"diz\w*|diga|fal\w*|mostr\w*|voc[eê]|vc|eu|ele|ela|depois|ent[aã]o|tamb[eé]m|agora|quero|"
+                          r"pode|vou|vamos)\b", re.IGNORECASE)
+MARCADOR_ELE_E_MEU = re.compile(
+    r"([^,.;!?\n]{3,80}),\s*(?:ele|ela|esse|essa|este|esta|isso|aquele|aquela)\s+(?:é|e)\s+m(?:eu|inha)\s+"
+    r"(favorit[oa]|preferid[oa])\b", re.IGNORECASE)
 MARCADOR_COMBINADO = re.compile(
     r"\b(?:prefiro que|quero que|gostaria que|de agora em diante|a partir de agora|"
     r"sempre que|nunca mais|n[ãa]o (?:precisa|quero que você)|pode (?:sempre|parar de))\s+"
@@ -260,8 +272,9 @@ def extrair_por_regra(texto: str, *, origem=None) -> list:
             not PAPEL_PERGUNTA.search(t) and "?" not in t.split("criador")[0][-30:]
     if declarou_papel:
         achados.append({"tipo": "relacao",
-                        "conteudo": "Esta pessoa se declara responsável por eu existir "
-                                    "nesta instalação — foi ela que me montou e me roda.",
+                        # 11/11: só o que a pessoa declarou. Antes vinha "nesta instalação — foi quem me montou e
+                        # me roda" para qualquer frase, e o lugar não vem de fábrica.
+                        "conteudo": "Esta pessoa se declara responsável por eu existir.",  # 07/11: sem gênero presumido
                         "entidades": ["usuário", config.ENTIDADE_NOME],
                         "chave": f"origem_{config.ENTIDADE_ID}",
                         "confianca": 0.9, "papel": "criador"})
@@ -302,8 +315,18 @@ def extrair_por_regra(texto: str, *, origem=None) -> list:
                             "entidades": ["usuário", lugar[:40]], "chave": "moradia",
                             "confianca": 0.85})
 
+    for m in MARCADOR_ELE_E_MEU.finditer(t):
+        referente = re.split(r"\b(?:o que (?:é|e)|sobre|o|a|os|as|do|da|dos|das)\s+", m.group(1), flags=re.IGNORECASE)[-1]
+        coisa, valor = _limpar(m.group(2)), _limpar(referente)
+        if len(valor) >= 2:
+            achados.append({"tipo": "propriedade", "conteudo": f"{coisa} do usuário: {valor}",
+                            "entidades": ["usuário", coisa], "chave": _sem_acento(coisa)[:30],
+                            "confianca": 0.8, "propriedade": (coisa, valor)})
+
     for m in MARCADOR_PROPRIEDADE.finditer(t):
-        coisa, valor = _limpar(m.group(1)), _limpar(m.group(2))
+        coisa, valor = _limpar(m.group(1)), _limpar(m.group(3))
+        if m.group(2).casefold() == "e" and _E_CONJUNCAO.match(valor):
+            continue  # "meu favorito e encontre um mangá": é conjunção, não "é"
         if len(coisa) >= 3 and len(valor) >= 2 and _sem_acento(coisa) not in CORTE_NOME:
             achados.append({"tipo": "propriedade", "conteudo": f"{coisa} do usuário: {valor}",
                             "entidades": ["usuário", coisa], "chave": _sem_acento(coisa)[:30],
@@ -427,9 +450,12 @@ def pos_turno(texto_usuario: str, resposta: str, nome_usuario: str = "usuário",
     if not speech_perception.learning_allowed(origem):return relatorio
 
     achados = extrair_por_regra(texto_usuario, origem=origem or origem_entrada({'nome': nome_usuario}))
+    humano = (origem or {}).get('autor_tipo', 'humano') == 'humano'
     for a in achados:
         if a.get("nome_detectado"):
             relatorio["nome_detectado"] = a["nome_detectado"]
+        if a.get("papel") and humano:  # 07/11: "eu sou o responsável por você" no chat da Central marca o papel
+            relatorio["papel"] = a["papel"]
     relatorio["fatos"] = registrar_achados(achados, nome_usuario)
 
     for traco, intensidade, motivo in evidencias_do_comportamento(
@@ -474,11 +500,15 @@ tipos válidos: observacao, interpretacao, hipotese, reflexao, inferencia, fato,
 Uma conclusão minha é inferência/interpretação, nunca fato confirmado. Conservo
 a categoria e a origem; confiança zero é válida. Não promovo hipótese a fato.
 
-Guardo só o que vale para daqui a semanas: quem é a pessoa, o que ela tem, o que
-ela prefere, o que combinamos, como algo funciona nesta máquina.
+Guardo o que vale para daqui a semanas: quem é a pessoa, o que ela tem, o que
+ela prefere, o que combinamos, o que a pessoa me contou sobre mim (o que eu sou,
+em que fase estou, o que espera de mim), como algo funciona nesta máquina.
+Também anoto, curto, o que a pessoa me disse ou pediu agora, mesmo que valha só
+por hoje ("Gustavo me disse que está difícil me desenvolver"): vira lembrança leve.
+Escrevo do meu jeito: "eu" para mim, o nome da pessoa quando já sei.
 NÃO guardo: o clima da conversa, o que eu respondi, pergunta sem resposta, suposição
 minha, nem nada que já esteja em CONHECIDO abaixo.
-Se não houver nada durável, devolvo [].
+Se não houver nada, devolvo [].
 
 CONHECIDO:
 {conhecido}
@@ -603,6 +633,57 @@ def ler_extracao(bruto: str) -> list[dict]:
     return candidatos
 
 
+_PESSOA_GENERICA = ((r"\bdo usu[aá]rio\b", "de {n}"), (r"\bao usu[aá]rio\b", "a {n}"),
+                    (r"\bcom o usu[aá]rio\b", "com {n}"), (r"\bpelo usu[aá]rio\b", "por {n}"),
+                    (r"\b[Oo] usu[aá]rio\b", "{n}"), (r"\b[Aa] usu[aá]ria\b", "{n}"),
+                    (r"\bda pessoa\b", "de {n}"), (r"\b[Aa] pessoa\b", "{n}"))
+_GOSTO = re.compile(r"\b(?:gost|prefer|ador|curt|favorit|odei|detest|n[aã]o suporta|ama\b|amo\b|evita)", re.I)
+_NOMES_DESCONHECIDOS = {"", "alguém", "alguem", "usuario", "usuário", "você", "voce", "local"}
+
+
+def _nome_conhecido(origem) -> str:
+    """Nome já aprendido de quem falou neste canal; vazio se ainda não sei."""
+    try:
+        from social import people
+        canal = str((origem or {}).get("canal") or "")
+        quem = str((origem or {}).get("sujeito_id") or (origem or {}).get("autor_id") or "")
+        if not canal or not quem or (origem or {}).get("autor_tipo", "humano") != "humano":
+            return ""
+        pessoa = people.identificar(nome="", canal=canal, canal_id=quem, criar=False) or {}
+        nome = str(pessoa.get("nome") or "").strip()
+        return "" if nome.casefold() in _NOMES_DESCONHECIDOS else nome
+    except Exception:  # noqa: BLE001 — sem nome, a anotação fica como veio
+        return ""
+
+
+def normalizar_anotacao(item: dict, origem) -> dict:
+    """07/11 (teste de uso): o escriba-modelo escrevia "O usuário diz que é o responsável pela existência da entidade",
+    como "preferência" e sem ligar a anotação a ninguém. Aqui: o nome que eu já sei no lugar de "o usuário", eu mesma
+    no lugar de "a entidade", a anotação ligada a quem falou e "preferência" só quando é gosto."""
+    item = dict(item)
+    conteudo = item["conteudo"]
+    eu = config.ENTIDADE_NOME
+    artigo = "do" if config.ENTIDADE_ID == "alistair" else "da"
+    for padrao, troca in ((r"\bda entidade\b", f"{artigo} {eu}"), (r"\bpela entidade\b", f"pel{artigo[-1]} {eu}"),
+                          (r"\bna entidade\b", f"n{artigo[-1]} {eu}"), (r"\b[Aa] entidade\b", eu)):
+        conteudo = re.sub(padrao, troca, conteudo)
+    fala_da_pessoa = any(re.search(p, conteudo) for p, _ in _PESSOA_GENERICA)
+    nome = _nome_conhecido(origem)
+    if nome:
+        for padrao, troca in _PESSOA_GENERICA:
+            conteudo = re.sub(padrao, troca.format(n=nome), conteudo)
+    quem = str((origem or {}).get("sujeito_id") or "")
+    if quem and (fala_da_pessoa or (nome and nome in conteudo)):
+        marca = f"participante:{quem}"
+        genericos = {"usuario", "usuário", "pessoa", "a pessoa", "alguém", "alguem"}
+        resto = [e for e in item["entidades"] if e != marca and e != nome and e.casefold() not in genericos]
+        item["entidades"] = [marca] + ([nome] if nome else []) + resto[:2]
+    if item["tipo"] == "preferencia" and not _GOSTO.search(conteudo):
+        item["tipo"] = "interpretacao"
+    item["conteudo"] = conteudo[:1].upper() + conteudo[1:]
+    return item
+
+
 def aplicar_extracao(bruto: str, fonte: str = "escriba_llm", *, origem=None, revisoes=None) -> list:
     """Grava as anotações do escriba-modelo.
 
@@ -623,16 +704,23 @@ def aplicar_extracao(bruto: str, fonte: str = "escriba_llm", *, origem=None, rev
     gravados = []
     for posicao, item in enumerate(candidatos):
         decisao = revisoes.get(posicao)
-        if decisao is not None and not decisao.get("guardar"):
+        # 07/11 (pedido humano: "quero que quase tudo vire memória"): o que a pessoa disse de fato, mas só vale por ora,
+        # vira lembrança de bronze em vez de sumir. Inventada, sem apoio ou só da entidade continua fora.
+        bronze = bool(decisao is not None and not decisao.get("guardar") and decisao.get("motivo") == "passageira"
+                      and decisao.get("base") == "pessoa")
+        if decisao is not None and not decisao.get("guardar") and not bronze:
             continue
-        substituir = [decisao["substitui"]] if decisao and decisao.get("substitui") else []
+        substituir = [decisao["substitui"]] if decisao and decisao.get("substitui") and not bronze else []
+        item = normalizar_anotacao(item, provenance)
+        if bronze:
+            item = dict(item, tipo="evento", confianca=min(item["confianca"], 0.5))
         try:
             evidence = dict(_origem_atual(provenance), basis='extracao_llm_nao_confirmada',
                             sujeito_id=None, sujeito_nome=None, sujeitos_mencionados=item["entidades"],
                             **({'revisao': decisao["motivo"]} if decisao else {}))
             result = saber.remember(item["conteudo"], entidades=item["entidades"], tipo=item["tipo"],
-                                    confianca=item["confianca"], fonte=fonte, evidencias=[evidence],
-                                    substituir=substituir)
+                                    confianca=item["confianca"], fonte=FONTE_BRONZE if bronze else fonte,
+                                    evidencias=[evidence], substituir=substituir)
             if result.startswith('Erro'):
                 continue
             gravados.append(item["conteudo"][:90])

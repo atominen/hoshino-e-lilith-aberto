@@ -27,13 +27,33 @@ _DESKTOP_ALIASES = {
 }
 
 
+_NOMES_DESKTOP = ("desktop", "área de trabalho", "area de trabalho", "área_de_trabalho", "area_de_trabalho")
+
+
 def _desktop_dir() -> Path:
-    candidatos = [Path.home() / "Desktop", Path.home() / "Área de Trabalho"]
-    for p in candidatos:
-        if p.exists() and p.is_dir():
-            return p.resolve()
+    """A área de trabalho de verdade: primeiro o que o sistema diz (xdg-user-dirs), depois os nomes conhecidos
+    sem diferenciar maiúscula. Teste de uso 07/11: o PC tem "Área de trabalho" (t minúsculo), a lista fixa só
+    tinha "Área de Trabalho" e a pasta pedida acabou num ~/Desktop criado à toa."""
+    home = Path.home()
+    try:
+        config_dir = Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config")
+        for linha in (config_dir / "user-dirs.dirs").read_text(encoding="utf-8").splitlines():
+            if linha.strip().startswith("XDG_DESKTOP_DIR="):
+                valor = linha.split("=", 1)[1].strip().strip('"').replace("$HOME", str(home))
+                p = Path(os.path.expanduser(valor))
+                if p.is_dir() and p.resolve() != home.resolve():
+                    return p.resolve()
+    except (OSError, UnicodeDecodeError):
+        pass
+    try:
+        existentes = {p.name.casefold(): p for p in home.iterdir() if p.is_dir()}
+    except OSError:
+        existentes = {}
+    for nome in _NOMES_DESKTOP:
+        if nome in existentes:
+            return existentes[nome].resolve()
     # Só usa Desktop como destino padrão; não cria aqui.
-    return candidatos[0].resolve()
+    return (home / "Desktop").resolve()
 
 
 def resolver_caminho(caminho: str | os.PathLike[str], base: str | os.PathLike[str] | None = None) -> Path:

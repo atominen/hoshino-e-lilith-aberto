@@ -15,7 +15,7 @@ class ExperimentosTest(unittest.TestCase):
     def setUp(self):
         t=tempfile.TemporaryDirectory();self.addCleanup(t.cleanup)
         self.home=Path(t.name)
-        d=self.home/'pacote_identidade_v5';d.mkdir(exist_ok=True)
+        d=self.home/'pacote_identidade_v6';d.mkdir(exist_ok=True)
         records=[{'messages':[{'role':'user','content':f'Pergunta {i}'},{'role':'assistant','content':f'Resposta {i}'}]} for i in range(4)]
         self.lines=[json.dumps(x,ensure_ascii=False) for x in records]
         (d/'hoshino_train.jsonl').write_text('\n'.join(self.lines[:2]))
@@ -34,7 +34,7 @@ class ExperimentosTest(unittest.TestCase):
         (root/'model.safetensors').write_bytes(b'x'*8192)
         self.assertFalse(validate_local(root,BY_ID['qwen3-8b']['repo']))
         self.assertEqual(installed_models(self.home),[])
-        with self.assertRaises(ValueError):clean_params({'model':'qwen3-8b','operation':'train','dataset':'pacote_identidade_v5:hoshino'},self.home)
+        with self.assertRaises(ValueError):clean_params({'model':'qwen3-8b','operation':'train','dataset':'pacote_identidade_v6:hoshino'},self.home)
 
     def test_unknown_downloaded_inventory_read_only(self):
         root=self.home/'modelos-extras'/'outro-modelo'/'hf';root.mkdir(parents=True)
@@ -48,8 +48,8 @@ class ExperimentosTest(unittest.TestCase):
 
     def test_exactly_30m_cycle(self):
         self.install_fake('qwen3-8b')
-        with self.assertRaises(ValueError):clean_params({'model':'qwen3-8b','operation':'cycle_30m','dataset':'pacote_identidade_v5:hoshino','minutes':15},self.home)
-        params=clean_params({'model':'qwen3-8b','operation':'cycle_30m','dataset':'pacote_identidade_v5:hoshino','minutes':30},self.home)
+        with self.assertRaises(ValueError):clean_params({'model':'qwen3-8b','operation':'cycle_30m','dataset':'pacote_identidade_v6:hoshino','minutes':15},self.home)
+        params=clean_params({'model':'qwen3-8b','operation':'cycle_30m','dataset':'pacote_identidade_v6:hoshino','minutes':30},self.home)
         self.assertEqual(params['minutes'],30)
         self.assertEqual(params['entity'],'hoshino')
 
@@ -75,20 +75,20 @@ class ExperimentosTest(unittest.TestCase):
 
     def test_guard_vision_not_training(self):
         with self.assertRaises(ValueError):
-            clean_params({'model':'qwen25-vl-7b','operation':'train','dataset':'pacote_identidade_v5:hoshino'},self.home)
+            clean_params({'model':'qwen25-vl-7b','operation':'train','dataset':'pacote_identidade_v6:hoshino'},self.home)
         with self.assertRaises(ValueError):
             clean_params({'model':'yi-vl-6b','operation':'ollama_test'},self.home)
 
     def test_no_cross_entity_corpus(self):
         self.install_fake('qwen3-8b')
         with self.assertRaises(ValueError):
-            clean_params({'model':'qwen3-8b','operation':'train','dataset':'pacote_identidade_v5:hoshino','entity':'lilith'},self.home)
+            clean_params({'model':'qwen3-8b','operation':'train','dataset':'pacote_identidade_v6:hoshino','entity':'lilith'},self.home)
 
     def test_invalid_model_and_time(self):
         with self.assertRaises(ValueError):clean_params({'model':'invalid/path','operation':'download'},self.home)
         self.install_fake('qwen3-8b')
         with self.assertRaises(ValueError):clean_params({'model':'qwen3-8b','operation':'train','dataset':'../../etc/passwd'},self.home)
-        with self.assertRaises(ValueError):clean_params({'model':'qwen3-8b','operation':'train','dataset':'pacote_identidade_v5:hoshino','minutes':300},self.home)
+        with self.assertRaises(ValueError):clean_params({'model':'qwen3-8b','operation':'train','dataset':'pacote_identidade_v6:hoshino','minutes':300},self.home)
 
     def test_upload_valid_jsonl(self):
         d=import_dataset(self.home,'\n'.join(self.lines[:2]),'\n'.join(self.lines[2:]))

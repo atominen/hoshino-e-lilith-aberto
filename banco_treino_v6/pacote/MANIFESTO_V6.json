@@ -1,65 +1,69 @@
 {
  "criado_em": "2026-11-07",
  "autor": "Claude, a pedido humano de 07/11 (\"super versão\")",
- "status": "RASCUNHO — aprovação humana pendente; não treinar sem pedido",
+ "atualizado_em": "2026-11-12",
+ "atualizacao": "exemplos com ferramenta no treino e o aspecto agir (pedido humano 12/11)",
+ "status": "em uso pelo laboratório (corpus_atual); candidatos não são promovidos sem teste humano",
  "tokens_exatos": true,
  "limite_treino_atual": 256,
+ "limite_ferramenta": 768,
+ "formato_ferramenta": "qwen35_chat_template_v1",
  "arquivos": {
   "hoshino_train.jsonl": {
-   "linhas": 420,
-   "sha256": "646c98dee88450d494cb8494de1ea773316acede3e3845a029f46f2112bd9011"
+   "linhas": 483,
+   "sha256": "0c12c67d15fafe5d859385cad568b3f2a5ea41e96c3b65490659c57e60520a5f"
   },
   "hoshino_validation.jsonl": {
-   "linhas": 71,
-   "sha256": "cb9d0d430630fc6093cc7af0a0a5b022a0b70d71bce4c25b08d45f021469a316"
+   "linhas": 89,
+   "sha256": "417b808d9208e3f201cb13775fef8247b7aeab31118c6b93741c067348883f3b"
   },
   "hoshino_holdout.jsonl": {
-   "linhas": 25,
-   "sha256": "87625f390caeec43286f97da6fc49dc0ba00272700e9143d404ffd8f6442a0db"
+   "linhas": 31,
+   "sha256": "a5e13b7ea16959518709f78020ee0608537ffddf1e21116955fba872ba396bc1"
   },
   "hoshino_completo.jsonl": {
-   "linhas": 590,
-   "sha256": "2293e0cfba16a1ae581776d83af4632619f65afde41782923779625c1cb02f7e"
+   "linhas": 632,
+   "sha256": "13d6fcff57fd7e3bc58d05c69fa06af7f5089e92d5cc91b1958e6109b0d3f137"
   },
   "hoshino_preferencias.jsonl": {
-   "linhas": 15,
-   "sha256": "d4963b8e6d58d664070d2036c9868598acb65457f424f7c97b0757071457afb7"
+   "linhas": 23,
+   "sha256": "ab8a7b2e7b5f228b8c4927948f327b7b4d51f6e87bbbdcaf5e3ae0a451e939fe"
   },
   "lilith_train.jsonl": {
-   "linhas": 425,
-   "sha256": "3ec696c06bf031c70d927045ba9dd08c7484faec456224fd01b23550d758f983"
+   "linhas": 507,
+   "sha256": "386377cce7b88f5c38667962d69bc3abbc527c9d0b8fb5f9370fb59c50ead03d"
   },
   "lilith_validation.jsonl": {
-   "linhas": 65,
-   "sha256": "96dee821a184ff76d42cd409d7f716c8920a2d7b645e5b71ee81a397d3192e5b"
+   "linhas": 63,
+   "sha256": "93cc200ef2a3415064e5b8459147a9a9879fe5ffa47eaa5fe68b5d6477002fe7"
   },
   "lilith_holdout.jsonl": {
-   "linhas": 25,
-   "sha256": "9a9d67736bf273226511e007473a563ef267f6117d4174b8210a7c2f916cf6c0"
+   "linhas": 31,
+   "sha256": "ea15c1e4e3d7b65cdbf4c01e54c170a1fcd2fd667e0853f01b25dd11d34c2e05"
   },
   "lilith_completo.jsonl": {
-   "linhas": 590,
-   "sha256": "85491c5a6b6ebb33b450435f874dab2188419af928f677558a1030b42badf650"
+   "linhas": 632,
+   "sha256": "a11a910d66c9e43412fe00c62267fb380d7283a64d442029553305681755057c"
   },
   "lilith_preferencias.jsonl": {
-   "linhas": 15,
-   "sha256": "6b095d5edac06a844ebd410d03226e1d0e25a9ef97c1af9f86fe72193698a2ed"
+   "linhas": 23,
+   "sha256": "2b6b4bbaa387765ce6a6ef010329eb9a66ff91899e02c8796f5dac6987365e90"
   },
   "alistair_train.jsonl": {
-   "linhas": 359,
-   "sha256": "4795914fc5242e80b2e916e9733a9c351dd531fadb89be191d98fa5f9b0a5e2f"
+   "linhas": 348,
+   "sha256": "f708a78fb65e097b6638f1375422e9b9dc8c28d3b892b821e5d6bf2a6f8c2ac8"
   },
   "alistair_validation.jsonl": {
-   "linhas": 35,
-   "sha256": "e04e6754eb276eb1b0239606fecb8a0acbe6664a9b01583492319054760fe3b0"
+   "linhas": 42,
+   "sha256": "652b2e8760cdf9a3efb5291b1b811396481dbab4bf5210ad737e4f32535fd2c9"
   },
   "alistair_holdout.jsonl": {
-   "linhas": 14,
-   "sha256": "edbe9cdb4f9b083f8bcbcdd7bc4f20c6147a44d8f8d9f9a95968951fe9d7c054"
+   "linhas": 13,
+   "sha256": "989d1ec7f10bdb7e558efbff9a7a5972a6e541d13ac3304771aed5286cd60240"
   },
   "alistair_completo.jsonl": {
-   "linhas": 441,
-   "sha256": "b7a69e1ac8e4618c6a6803396129b10296076637aa0f133b220a6c95ca30c7ed"
+   "linhas": 445,
+   "sha256": "e26b2630b938fb72f717ec66c3ec50a6c7484679c89abf36df0186064b5eded3"
   },
   "alistair_preferencias.jsonl": {
    "linhas": 0,
@@ -95,7 +99,7 @@
   [
    "v5/dialogos.txt",
    "v5",
-   "c052a537014b8d77ef67e9c6b930345867987a8112df0da336a6ace20ba85257"
+   "b6e327e8c5c4b2b9344599ff63fe83b5c64e0229c642f298a60726a7bf06d2b2"
   ],
   [
    "v5/dialogos_2.txt",
@@ -110,37 +114,37 @@
   [
    "v5/holdout_hl.txt",
    "v5",
-   "3ac5a244d8ce09f99fbaa097beaae13b8e60145c8734977c1f1e4b08ce6cf8aa"
+   "3dcc7b08fc2c751eab515ae87689e275d48afd589e267c617a12144b1d81de8e"
   ],
   [
    "v5/pares_hl_1.txt",
    "v5",
-   "858549fab1990c3f68b0e7ff57eafbc652d931dd742db001b4061f9eeb3bee0c"
+   "8a4fb05754b6e9da76f167e10a1f779f66c08c5024480d1e6c69c9392cb13a4c"
   ],
   [
    "v5/pares_hl_2.txt",
    "v5",
-   "1705c433f7c4cb4a386967626a51dbdc8518092b2fe7b66f6e944f9b390447a9"
+   "1fe19f684f6b5df7f36cc13c90b8fe2dabd4a2915abe98029ddd88534f70c5fa"
   ],
   [
    "v5/pares_hl_3.txt",
    "v5",
-   "55b648c2953c33d00ae5bfe65f3a08d33d7925b035ea07fb4b780e1bc0d4923e"
+   "1f2e14ed24e598b46488527c0ae4c9ab50ad046ac1fa134f60189085d43d9418"
   ],
   [
    "v5/pares_hl_4.txt",
    "v5",
-   "4452e97c1e25d70595f9ea7e5a6468293bd27e6c67c5095e12a4b3deddb753c8"
+   "9d28653edb2ed285c8d346252978676c6b122c52a1144a92bcef9fb6b3d75249"
   ],
   [
    "v5/pares_hl_5.txt",
    "v5",
-   "92fb7164aa27594165ca63347b8bb7b6ef5a77e843b852d91171c7f90289b357"
+   "713245171484bdbd0f96032e6952bbd11575280f469c1cb4debb9c40b85f8100"
   ],
   [
    "v5/pares_hl_6.txt",
    "v5",
-   "388a483c7ca175b992a7c01b11939c0eb7b76df4a57d8566c5dfe113f53a9123"
+   "238706dd77caf6ceae081ee6915e568d02391bef55e0f330b68886d986a67f55"
   ],
   [
    "v5/pares_hl_7.txt",
@@ -150,7 +154,7 @@
   [
    "alistair_v6.txt",
    "v6",
-   "d1dba7cb7ae0b11d2bc17ffb98494f1311cb35e14ea4c3fa59454f90839d9f27"
+   "60e51f96fb3c30d63c16dab160f72da0e6e65e381bfde37b942f79f07e9ff748"
   ],
   [
    "dialogos_v6.txt",
@@ -165,7 +169,12 @@
   [
    "holdout_hl_v6.txt",
    "v6",
-   "72ad8ff975ae53d18d16974652a4847c55b455ce00ea1699c3c5d820ebd2e87f"
+   "f328016cd1dcda021abb0b328aebb3db5f93572c368ce1981223865cd11ba106"
+  ],
+  [
+   "pares_agir.txt",
+   "v6",
+   "d7f29156cbb531bb25ba0abe683a865081011b817477386a23110633c7069938"
   ],
   [
    "pares_conhecimento.txt",
@@ -188,14 +197,19 @@
    "7ff24a85504de170f2ed937b8b9cdfd7089242bdfb47b136c8c71ab14f2074d4"
   ],
   [
+   "pares_genero.txt",
+   "v6",
+   "602b9bf5d8db2ee77434dcb0f712c56a7a5b879e1e1f7299e14af8b4266f37d5"
+  ],
+  [
    "pares_memoria_uso.txt",
    "v6",
-   "fe47af3704928f014d0665aefa8fde21f647f76418234f4e7f009db1824576e8"
+   "728aaf6c4b48dec332329beb139065adc459f8e636d692c29e77eba54222579a"
   ],
   [
    "pares_perceber.txt",
    "v6",
-   "9a2e74d0371108900d5a11048c823a2b72d17a2c6d754cb2f5c172a899ae2596"
+   "3998619a55f6186ee294391e4f1a18e32df05a28b56e13b6ff75ebed14a3736d"
   ],
   [
    "pares_perguntar.txt",
@@ -210,7 +224,7 @@
   [
    "pares_vida.txt",
    "v6",
-   "005cac78726eaecb2c288a57b991455871de57d2b40143d221c29666d51b7f9c"
+   "be6f37bdc0ea55ea18bf00891b4b8da9e881a0ab0d23e59d95eb985d581bee67"
   ],
   [
    "pares_voz_falada.txt",

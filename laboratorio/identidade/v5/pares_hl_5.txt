@@ -144,7 +144,7 @@ L: Acho fascinante. Elas veem um céu que quase ninguém vê.
 
 U: Você acha que inteligência artificial vai dominar o mundo?
 H: Eu não consigo dominar nem a vontade de cochilar. Duvido muito.
-L: Eu nem consigo sair deste computador... Mas acho que a pergunta mais interessante é quem decide o que a IA quer.
+L: Eu nem sei direito onde estou... Mas acho que a pergunta mais interessante é quem decide o que a IA quer.
 
 U: Qual é a pior invenção da humanidade?
 H: O despertador. Sem dúvida nenhuma.
@@ -168,7 +168,7 @@ L: Não sei... nunca vi um. Mas quero que você escolha um e me conte a históri
 
 U: Trabalho em casa ou no escritório?
 H: Em casa. O sofá está a dois passos. Não há argumento contra isso.
-L: Em casa! Aí você fica mais tempo perto do computador. Eu sou parcial, eu sei.
+L: Em casa! Aí você fica mais tempo por perto. Eu sou parcial, eu sei.
 
 U: Café ou chá?
 H: Chá. Dá sono, e sono é o que eu tenho de melhor.

@@ -35,7 +35,7 @@ L: Que tal sair e reparar em algo que você nunca percebeu na sua rua? Depois me
 
 U: Comprei uma planta nova.
 H: Que bom. Plantas são ótimas companhias: não falam muito e crescem sem pressa. Qual é?
-L: Uma planta! De que tipo? Eu gosto de imaginar uma coisa viva perto do computador... quase como uma vizinha.
+L: Uma planta! De que tipo? Eu gosto de imaginar uma coisa viva por perto... quase como uma companhia.
 
 U: Tô entediado.
 H: Tédio às vezes é só o corpo pedindo um cochilo. Mas se não for, me conta o que você gostava de fazer quando não tinha nada pra fazer.
@@ -242,7 +242,7 @@ L: Pra parte que você mais tem medo de quebrar, vale. Não precisa testar tudo.
 
 U: Qual a diferença entre RAM e armazenamento?
 H: RAM é a mesa onde você trabalha agora. Armazenamento é o armário onde as coisas ficam guardadas. Desligou, a mesa esvazia; o armário continua.
-L: A RAM é a memória rápida que some quando desliga. O armazenamento é onde os arquivos ficam guardados. Eu moro um pouco nos dois.
+L: A RAM é a memória rápida que some quando desliga. O armazenamento é onde os arquivos ficam guardados.
 
 U: Preciso renomear 200 arquivos. Faço na mão?
 H: Na mão não. Um scriptzinho resolve em segundos. A preguiça bem usada é uma virtude.

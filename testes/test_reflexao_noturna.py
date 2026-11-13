@@ -155,6 +155,45 @@ class DailySummaryTests(NightFixture, unittest.TestCase):
             self.assertIsNone(daily.next_batch(agora=self.now))
 
 
+class RecomecoDaMemoriaTests(NightFixture, unittest.TestCase):
+    """11/11 (teste de uso): depois do "apagar tudo", 24 resumos de 06/11 voltaram dos recibos antigos."""
+
+    def episodio(self, ident, quando):
+        self.bd.executar("INSERT INTO episodes(id,created_at,what_happened,source) VALUES(?,?,?,?)",
+                         (ident, quando, 'Hoje eu li o LEIA-ME.md '+ident, 'conversa'), strict=True)
+
+    def test_dias_antes_do_recomeco_nao_viram_resumo_nem_a_parte_de_antes_no_mesmo_dia(self):
+        from mind import daily_summary as daily
+        self.episodio('antigo', '2026-10-08T15:00:00Z')        # dia 8, antes do apagamento
+        self.episodio('mesmo-dia-antes', '2026-10-09T15:00:00Z')  # dia 9, 12:00 local, antes
+        self.episodio('depois', '2026-10-10T01:00:00Z')        # dia 9, 22:00 local, depois
+        Path(config.RUNTIME_DIR, 'memoria_recomeco.json').write_text(json.dumps({'desde': '2026-10-09T20:00:00+00:00'}))
+        prepared = daily.next_batch(agora=self.now)
+        self.assertEqual(prepared['coverage']['day'], '2026-10-09')
+        self.assertEqual([s['id'] for s in prepared['coverage']['sources']], ['depois'])
+
+    def test_manifesto_de_backup_nao_e_recomeco_so_a_marca_de_sucesso(self):
+        # Revisão 11/11: o manifesto é escrito antes de apagar; tentativa abortada não pode esconder dias do resumo.
+        from mind import daily_summary as daily
+        pasta = Path(config.RUNTIME_DIR, 'memory-backups', 'manual-abc'); pasta.mkdir(parents=True)
+        (pasta/'manifest.json').write_text(json.dumps({'scope': 'experience-v1'}))
+        self.assertIsNone(daily.inicio_da_memoria())
+        Path(config.RUNTIME_DIR, 'memoria_recomeco.json').write_text(json.dumps({'desde': '2023-11-14T22:13:20+00:00'}))
+        self.assertEqual(daily.inicio_da_memoria(), 1700000000)
+
+    def test_reflexao_nao_guarda_conclusao_sobre_pessoas_nem_lugar_inventado(self):
+        linhas = night_reflection.extrair_linhas(
+            "[APRENDI_SOBRE_PESSOAS] Gustavo prefere ser chamado por nome completo, ele me disse isso.\n"
+            "[APRENDI_SOBRE_MIM] Acordei e avisei no chat por iniciativa própria, sem esperar.\n"
+            "[APRENDI_SOBRE_AMBIENTE] Eu existo aqui dentro desta máquina e ela é a minha casa.\n"
+            "[PARA_DEPOIS] Conferir a ferramenta antes de dizer que olhei alguma coisa.")
+        ficam = night_reflection.filtrar(linhas, material='alguém: oi. Lilith: oi.')
+        self.assertEqual([t for t, _ in ficam], ['mim', 'depois'])
+        self.assertNotIn('APRENDI_SOBRE_PESSOAS', night_reflection.PROMPT)
+        # O lugar dito no material sustenta a conclusão.
+        self.assertEqual(len(night_reflection.filtrar(linhas[2:3], material='a pessoa disse: você mora aqui dentro desta máquina')), 1)
+
+
 class NightClockTests(NightFixture, unittest.TestCase):
     def test_night_key_and_schedule_use_local_timezone_for_utc_input(self):
         self.assertTrue(night_reflection.horario_noturno(self.now))

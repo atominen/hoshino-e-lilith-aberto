@@ -23,14 +23,16 @@ FIELDS={
 }
 KINDS=CARD_KINDS
 TIERS=CARD_TIERS
-TIER_SCHEMA="CREATE TABLE IF NOT EXISTS memory_card_settings(id TEXT PRIMARY KEY,tier TEXT NOT NULL CHECK(tier IN ('ferro','ouro','diamante','platina')),updated_at TEXT NOT NULL)"
+TIER_SCHEMA="CREATE TABLE IF NOT EXISTS memory_card_settings(id TEXT PRIMARY KEY,tier TEXT NOT NULL CHECK(tier IN ('bronze','ferro','ouro','diamante')),updated_at TEXT NOT NULL)"
 
 
 def tiers(database):
     if not database.is_file():return {}
     with closing(sqlite3.connect(database.as_uri()+'?mode=ro',uri=True,timeout=3)) as db:
         if not db.execute("SELECT 1 FROM sqlite_master WHERE name='memory_card_settings' AND type='table'").fetchone():return {}
-        return {row[0]:row[1] for row in db.execute('SELECT id,tier FROM memory_card_settings') if row[1] in TIERS}
+        # Banco ainda não migrado: a platina antiga vale como diamante (07/11).
+        return {row[0]:('diamante' if row[1]=='platina' else row[1]) for row in db.execute('SELECT id,tier FROM memory_card_settings')
+                if row[1] in TIERS or row[1]=='platina'}
 
 
 def card_revision(card):
@@ -38,7 +40,7 @@ def card_revision(card):
 
 
 def set_importance(paths,data):
-    if data.get('importance') not in TIERS:raise ValueError('Escolha Ferro, Ouro, Diamante ou Platina.')
+    if data.get('importance') not in TIERS:raise ValueError('Escolha Bronze, Ferro, Ouro ou Diamante.')
     database=mm._safe(mm.db_path(paths),paths.memory)
     if not database.is_file():raise ValueError('Banco próprio indisponível.')
     if shutil.disk_usage(paths.runtime).free<database.stat().st_size+1024**3:raise ValueError('Sem espaço para backup e reserva de 1 GiB.')
@@ -47,7 +49,9 @@ def set_importance(paths,data):
         with closing(sqlite3.connect(backup/database.name)) as snapshot:db.backup(snapshot)
         os.chmod(backup/database.name,0o600)
         with db:
-            db.execute('BEGIN IMMEDIATE');db.execute(TIER_SCHEMA)
+            db.execute('BEGIN IMMEDIATE')
+            from memory.sqlite.init_db import migrar_niveis_cartoes
+            migrar_niveis_cartoes(db);db.execute(TIER_SCHEMA)
             db.execute('INSERT INTO memory_card_settings VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET tier=excluded.tier,updated_at=excluded.updated_at',
                 (data['card_id'],data['importance'],datetime.now(timezone.utc).isoformat()))
         if db.execute('SELECT tier FROM memory_card_settings WHERE id=?',(data['card_id'],)).fetchone()!=(data['importance'],):raise RuntimeError('Importância não confirmada; backup preservado. Não repetir automaticamente.')

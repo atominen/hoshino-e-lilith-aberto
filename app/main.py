@@ -58,6 +58,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config  # noqa: E402
 from core import bd, compaction, dispatch, kernel, prompting, rede, situation, diagnostics, cognition, history, resposta_segura, capabilities, task_state, user_modes, ollama_lifecycle, progress, intent, gpu_resource, resource_manager, interentity, world_state, activity_context  # noqa: E402
 from core import orcamento_adaptativo  # noqa: E402
+from core import executor_api  # noqa: E402
 from core.conversation import parece_correcao  # noqa: E402
 from memory.knowledge_store import recall as recall_conhecimento  # noqa: E402
 from memory.knowledge_store import recall_episodes  # noqa: E402
@@ -127,7 +128,12 @@ def salvar_episodio(mensagem, resposta, ferramentas=None, origem="conversa",
         return
     ep_id = f"ep-{uuid.uuid4().hex[:12]}"
     autoria = dict(autoria or scribe.origem_entrada({'id': person_id or 'usuario'}, canal))
-    texto = f"{autoria.get('autor_nome', 'Usuário')}: '{mensagem}'. {config.ENTIDADE_NOME}: '{resposta}'"
+    motivo = re.fullmatch(r"\s*\[iniciativa:\s*(.*?)\]\s*", mensagem or "", re.S)
+    if motivo:
+        # 07/11: "alguém: '[iniciativa: acabei de acordar…]'" punha na boca da pessoa o que foi iniciativa minha.
+        texto = f"{config.ENTIDADE_NOME}, por iniciativa própria ({motivo.group(1).strip()}): '{resposta}'"
+    else:
+        texto = f"{autoria.get('autor_nome', 'Usuário')}: '{mensagem}'. {config.ENTIDADE_NOME}: '{resposta}'"
     contexto = json.dumps({'origem': origem, 'autoria': autoria}, ensure_ascii=False)
     if ferramentas:
         texto += f" [ferramentas: {', '.join(ferramentas)}]"
@@ -184,6 +190,23 @@ def semear_origem() -> None:
             ("Como ela é: o que faz da vida, do que gosta, como prefere ser tratada?", 0.7)):
         scribe.curiosidade_nova(pergunta, sobre="minha origem", origem="origem",
                                 urgencia=urgencia)
+
+
+# 07/11 (teste de uso): abrir de novo o que já abriu neste turno só duplica abas e janelas. Rolar, teclar e jogar podem
+# ter motivo para repetir e ficam fora. O endereço manda: "nova_aba" diferente não faz outra abertura.
+_ABERTURAS = {"browser_abrir": "url", "abrir_url": "url", "abrir_no_pc2": None, "abrir_aplicativo": None,
+              "abrir_pasta": "caminho", "abrir_pasta_entregas": None, "focar_janela": "titulo"}
+
+
+def _chave_abertura(nome, args) -> str:
+    if nome not in _ABERTURAS or not isinstance(args, dict):
+        return ""
+    campo = _ABERTURAS[nome]
+    if campo:
+        valor = str(args.get(campo) or "").strip().rstrip("/").casefold()
+    else:
+        valor = json.dumps(dict(sorted(args.items())), ensure_ascii=False, default=str).casefold()
+    return f"{nome}:{valor}" if valor else ""
 
 
 def avancar_origem(nome: str) -> str:
@@ -1764,7 +1787,15 @@ class InterfaceHoshino(App):
                 if not isinstance(exc, TurnoCancelado):  # ceder a uma conversa não é falha
                     self._reflexao_noturna_espera_ate = time.monotonic() + 600
                 return
-        linhas = night_reflection.extrair_linhas(limpar_raciocinio(resposta.get("content", "")))
+        brutas = night_reflection.extrair_linhas(limpar_raciocinio(resposta.get("content", "")))
+        linhas = night_reflection.filtrar(brutas, material.get('material', '') if isinstance(material, dict) else '')
+        if brutas and not linhas:
+            # Revisão (11/11): a resposta veio certa, só que tudo era sobre pessoas ou lugar sem base. Encerrar a noite
+            # sem salvar, em vez de refazer a reflexão inteira a cada volta do ciclo e ocupar a GPU a noite toda.
+            diagnostics.emit('night_reflection.all_filtered', conclusoes=len(brutas))
+            night_reflection.marcar_concluida(agora, motivo=motivo)
+            self.sys_log.write('[blue]→ reflexão noturna: nada para guardar (só pessoas ou lugar sem base)[/blue]')
+            return
         if not linhas:
             diagnostics.emit('night_reflection.invalid_response', severity='WARNING')
             self.sys_log.write('[yellow]revisão noturna sem conclusões válidas; não foi marcada como concluída[/yellow]')
@@ -2434,7 +2465,24 @@ class InterfaceHoshino(App):
             try:
                 async with self._obter_trava_modelo():
                     recusar_novo_pedido_em_sono('after_model_lock')
-                    if config.STREAM_LLM:
+                    mensagem = None
+                    if executor_api.ativo():
+                        # 07/11 (pedido humano: "o projeto também deve aceitar API"): sem GPU; se a API falhar
+                        # (cota, rede, erro), registra e segue pelo modelo local no mesmo pedido.
+                        try:
+                            diagnostics.emit('llm.api_start', request_id=request_id,
+                                             limite_s=executor_api.LIMITE_ENTIDADE_S, **executor_api.escolha())
+                            mensagem = await asyncio.to_thread(executor_api.chat, payload)
+                            status_code = 200
+                            diagnostics.emit('llm.api_used', request_id=request_id,
+                                             **executor_api.escolha())
+                        except executor_api.APIIndisponivel as exc:
+                            diagnostics.emit('llm.api_failed', level='WARN', request_id=request_id,
+                                             error=str(exc)[:200], fallback='local')
+                            mensagem = None
+                    if mensagem is not None:
+                        pass
+                    elif config.STREAM_LLM:
                         self._llm_http_ativos = getattr(self, "_llm_http_ativos", 0) + 1
                         try:
                             mensagem = await asyncio.to_thread(
@@ -2689,6 +2737,16 @@ class InterfaceHoshino(App):
                 resultado_recovery["controlador_replanejar"] = bool(frame.tarefa_id)
                 preparadas.append((nome, args, resultado_recovery))
                 diagnostics.cognitive("duplicate_failed_call_blocked", tool=nome, args=args, task_id=frame.tarefa_id)
+                continue
+            chave_abertura = _chave_abertura(nome, args)
+            if chave_abertura and chave_abertura in frame.aberturas_feitas:
+                # 07/11 (teste de uso): o plano tinha três browser_abrir com o mesmo endereço e a busca abriu três vezes.
+                preparadas.append((nome, args, {
+                    "ok": True, "status": "success", "requires_verification": False, "repetida": True,
+                    "output": ("JÁ FEITO NESTE TURNO, não repeti: " + frame.aberturas_feitas[chave_abertura] +
+                               ". Siga para o próximo passo com outra ferramenta (por exemplo: ler a página com "
+                               "browser_info e abrir um resultado com browser_clicar, ou abrir o endereço achado).")}))
+                diagnostics.cognitive("duplicate_success_skipped", tool=nome, task_id=frame.tarefa_id)
                 continue
             preparadas.append((nome, args, None))
 
@@ -3203,8 +3261,10 @@ class InterfaceHoshino(App):
                     'Você chegou a uma barreira. Escreva em explicacao o que deu errado no seu plano anterior, '
                     'olhando ultimos_recibos e trajetoria, e recalcule o plano; pode pesquisar.'
                     if checkpoint['barrier'].get('level',1)<2 else
-                    'A barreira continua depois da revisão. Pergunte ao humano pelo chat do jogo (falar_no_chat) '
-                    'o que você não sabe, ou pesquise; a resposta dele aparece em chat_do_minecraft.')}}
+                    ('A barreira continua depois da revisão e só você está no servidor: pesquise ou mude de '
+                     'abordagem; ninguém vai ler o chat.' if minecraft_cognition.ninguem_online(state) else
+                     'A barreira continua depois da revisão. Pergunte ao humano pelo chat do jogo (falar_no_chat) '
+                     'o que você não sabe, ou pesquise; a resposta dele aparece em chat_do_minecraft.'))}}
                    if checkpoint.get('barrier') else {}),
                 **({'minhas_reflexoes':checkpoint['reflections'][-3:]} if checkpoint.get('reflections') else {}),
                 **({'retorno_escolha':checkpoint['choice_feedback']} if checkpoint.get('choice_feedback') else {}),
@@ -3219,6 +3279,11 @@ class InterfaceHoshino(App):
                 **({'meu_conhecimento':recalled} if recalled else {}),
                 **({'minhas_estacoes':stations} if stations else {}),
                 **({'jogadores_conhecidos':players} if players else {}),
+                **({'jogadores_online':state['onlinePlayers']} if isinstance(state.get('onlinePlayers'),list) else {}),
+                **({'sozinha_no_servidor':minecraft_cognition.SOZINHA_NO_SERVIDOR}
+                   if minecraft_cognition.ninguem_online(state) else {}),
+                **({'mochila_cheia':minecraft_cognition.mochila_cheia_texto(state)}
+                   if minecraft_cognition.mochila_cheia(state) is not None else {}),
                 **({'coleta_sem_ferramenta':blocked} if blocked else {}),
                 **({'sem_picareta':minecraft_cognition.no_pickaxe(state)} if minecraft_cognition.no_pickaxe(state) else {}),
                 chat_do_minecraft=minecraft_cognition.pending_chat(state,checkpoint),
@@ -3598,7 +3663,8 @@ class InterfaceHoshino(App):
             # 30/10 (pedido humano): a fala dela vai junto com a operação escolhida, na mesma decisão.
             # Revisão Codex: mesma validação do chat (sem comandos do servidor) e mesma conferência de sessão/destino
             # antes do efeito (execute → before_effect), com recibo; recusada, a fala não sai e a operação segue.
-            if isinstance(reply,str) and reply.strip() and tool!='minecraft_chat' and not cancelled():
+            if (isinstance(reply,str) and reply.strip() and tool!='minecraft_chat' and not cancelled()
+                    and not minecraft_cognition.ninguem_online(state)):  # 12/11: sozinha, a fala não tem quem leia
                 text=reply.strip()
                 refused=validate('minecraft_chat',{'texto':text})
                 try:
@@ -3678,6 +3744,122 @@ class InterfaceHoshino(App):
             progress.finalizar('interrompido','Objetivo e recibos preservados; nenhuma repetição automática.')
             raise
 
+    async def _escolher_objetivo_minecraft_livre(self,estado,free,pessoa=None):
+        """Ela escolhe o próximo objetivo do modo livre (12/11); o menu é só do que o ciclo sabe conferir no mundo."""
+        from core import minecraft_agent
+        try:
+            bruto=await asyncio.to_thread(dispatch.executar_resultado,'minecraft_estado',{},False,'local',pessoa)
+            observado=json.loads(bruto.get('output') or '{}')
+        except Exception:  # noqa: BLE001 — sem estado, ela escolhe sem inventário; o ciclo conecta e confere depois
+            observado={}
+        historico=[{'objetivo':o['objetivo'],'resultado':o.get('status'),**({'erro':o['erro']} if o.get('erro') else {})}
+                   for o in estado.get('objetivos',[])[-8:]]
+        menu=minecraft_agent.free_menu(observado,free,config.MINECRAFT_USERNAME)  # 12/11: sem os já cumpridos
+        if not menu:
+            return None
+        sistema=(f'ESCOLHA DE OBJETIVO DE {config.ENTIDADE_NOME} NO MINECRAFT. A pessoa deixou você jogar no servidor por '
+                 'conta própria: o que fazer lá é decisão sua. Escolha UM objetivo da lista; o jogo confere no '
+                 'inventário quando ele estiver feito e então você escolhe o próximo. Pense no que você tem agora '
+                 '(inventário, vida, fome), no que veio antes e no que você gostaria de fazer. Para objetivo com N, '
+                 'diga quantos em "quantidade". Em "motivo", uma frase sua, curta, sem prometer resultado.')
+        usuario=json.dumps({'estado':minecraft_agent.free_state_summary(observado),
+                            'objetivos_possiveis':menu,'objetivos_anteriores':historico},
+                           ensure_ascii=False)
+        esquema={'type':'object','properties':{
+            'objetivo':{'type':'string','enum':list(menu)},
+            'quantidade':{'type':'integer','minimum':1,'maximum':64},
+            'motivo':{'type':'string','maxLength':240}},'required':['objetivo','motivo']}
+        mensagens=[{'role':'system','content':sistema},{'role':'user','content':usuario}]
+        for tentativa in range(2):
+            # 12/11: com raciocínio, a escolha estourou 2.048 fichas duas vezes (~1 min perdido em cada); escolher numa
+            # lista curta não precisa dele. A decisão de cada ação no jogo continua com raciocínio.
+            resposta=await self.chamar_modelo(mensagens,None,forcar_sem_pensar=True,formato=esquema,limite_saida=512)
+            try:
+                dados=json.loads(resposta.get('content') or '{}')
+            except (ValueError,TypeError):
+                return None
+            if not isinstance(dados,dict) or dados.get('objetivo') not in menu:
+                return None
+            if not (minecraft_agent.free_goal_done(free,dados['objetivo'],dados.get('quantidade'),
+                                                   config.MINECRAFT_USERNAME,observado)
+                    or minecraft_agent.free_goal_owned(free,dados['objetivo'],config.MINECRAFT_USERNAME,observado)):
+                return {'objetivo':dados['objetivo'],'quantidade':dados.get('quantidade'),
+                        'motivo':str(dados.get('motivo') or '').strip()[:240]}
+            # Quantidade que ela já tem: uma volta, com o fato; não escolhemos o número por ela.
+            mensagens=mensagens+[{'role':'assistant','content':resposta.get('content') or ''},
+                {'role':'user','content':'Esse objetivo já está cumprido pelo seu inventário atual; escolha outro '
+                 'ou uma quantidade maior do que você já tem.'}]
+        return None
+
+    async def _ciclo_minecraft_livre(self,tarefa,free,*,cancelar=None,chave_conversa=None,canal=None,pessoa=None,retomar=False):
+        """Modo livre do Minecraft (12/11, pedido humano "deixar ela lá sozinha prosseguindo").
+
+        Cada objetivo escolhido por ela vira uma tarefa própria (chave do modo livre + número) e roda no mesmo ciclo
+        observado de sempre: conectar ao endereço da pessoa, decidir, agir, conferir com recibos. Concluído, ela
+        escolhe o próximo. Pausado (barreira, efeito incerto, interrupção), o modo livre para e fica retomável com
+        "continue"; um objetivo travado por efeito incerto fica preservado e não é repetido.
+        """
+        from core import minecraft_agent,action_commentary
+        estado=minecraft_agent.load_free(tarefa.id) or {'version':1,'endereco':free,'objetivos':[]}
+        usados=[];relato=[]
+        def cancelled():return getattr(self,'_draining',False) or bool(cancelar and cancelar())
+        progress.iniciar(label='Minecraft · modo livre',channel=canal or 'local',task_id=tarefa.id)
+        for _ in range(minecraft_agent.FREE_GOALS_PER_TURN):
+            if cancelled():break
+            atual=estado['objetivos'][-1] if estado['objetivos'] else None
+            sub=None;retomando=False
+            if atual and atual.get('status')=='pausado' and retomar:
+                sub=task_state.carregar_por_id(atual['task_id'])
+                criteria=minecraft_agent.targets(sub.objetivo) if sub else None
+                cp=minecraft_agent.load(sub,criteria) if criteria else None
+                if cp and cp.get('pending') and cp['pending'].get('mutates'):
+                    # Efeito incerto sem reconciliação: preservado; não repetir. Ela escolhe outro objetivo.
+                    atual['status']='bloqueado_incerto';minecraft_agent.save_free(tarefa.id,estado);sub=None
+                elif sub:
+                    subkey=tuple(atual['chave'])
+                    bd.executar("UPDATE conversation_tasks SET status='active', updated_at=? WHERE id=?",(bd.agora(),sub.id))
+                    retomando=True
+            if sub is None:
+                escolha=await self._escolher_objetivo_minecraft_livre(estado,free,pessoa)
+                if not escolha:
+                    relato.append('Não consegui escolher um objetivo agora.');break
+                texto=minecraft_agent.free_goal_text(free,escolha['objetivo'],escolha.get('quantidade'),
+                                                     config.MINECRAFT_USERNAME)
+                subkey=('minecraft-livre',tarefa.id,str(len(estado['objetivos'])+1))
+                sub=task_state.iniciar_ou_continuar(subkey,texto)
+                if not sub or not minecraft_agent.targets(sub.objetivo):
+                    relato.append('O objetivo escolhido não virou uma tarefa conferível.');break
+                atual={'task_id':sub.id,'chave':list(subkey),'objetivo':escolha['objetivo'],'texto':sub.objetivo,
+                       'motivo':escolha['motivo'],'status':'ativo'}
+                estado['objetivos'].append(atual);minecraft_agent.save_free(tarefa.id,estado)
+                diagnostics.emit('minecraft.livre.objetivo_escolhido',task_id=tarefa.id,sub_task_id=sub.id,
+                                 objetivo=escolha['objetivo'],quantidade=escolha.get('quantidade'),motivo=escolha['motivo'])
+                action_commentary.record_deliberation(tarefa.id+'-mc-livre-'+uuid.uuid4().hex[:10],
+                    f"Objetivo escolhido por mim no modo livre: {sub.objetivo.split('. ',1)[-1]} Motivo: {escolha['motivo']}",
+                    [],'minecraft_free_goal')
+            criteria=minecraft_agent.targets(sub.objetivo)
+            try:
+                resposta,used=await self._ciclo_minecraft_observado(sub,criteria,cancelar=cancelar,chave_conversa=subkey,
+                                                                    canal=canal,pessoa=pessoa,retomar=retomando)
+            except ValueError as exc:
+                # 12/11: um objetivo com erro (ex.: MINECRAFT_RECEIPTS_REQUIRED) derrubava o modo livre inteiro e ela
+                # ficou parada 14 min. A tarefa do objetivo já foi pausada pelo ciclo; o motivo fica registrado, ela
+                # vê no histórico e escolhe outro (o laço continua limitado a FREE_GOALS_PER_TURN).
+                diagnostics.exception('minecraft.livre.objetivo_erro',exc,sub_task_id=sub.id)
+                atual['status']='erro';atual['erro']=str(exc)[:200];minecraft_agent.save_free(tarefa.id,estado)
+                retomar=False
+                continue
+            usados+=used
+            concluido=task_state.status_id(sub.id)=='completed'
+            atual['status']='concluido' if concluido else 'pausado';atual['resultado']=str(resposta)[:400]
+            minecraft_agent.save_free(tarefa.id,estado)
+            relato.append(str(resposta).strip())
+            retomar=False
+            if not concluido:break
+        task_state.pausar(chave_conversa)  # jogo livre não "termina": fica retomável com "continue"
+        progress.finalizar('interrompido','Modo livre pausado; objetivos e recibos preservados.')
+        return ('\n'.join(r for r in relato if r) or 'Modo livre pausado.'),usados
+
     @resource_manager.inference_cycle()
     async def ciclo_de_ferramentas(self, mensagens, ferramentas, intencao: dict | None = None,
                                    cancelar=None, chave_conversa=None, canal=None, pessoa=None,
@@ -3691,6 +3873,13 @@ class InterfaceHoshino(App):
             if criteria:
                 last_input=next((str(m.get('content','')) for m in reversed(mensagens) if m.get('role')=='user'),'')
                 return await self._ciclo_minecraft_observado(tarefa_turno,criteria,cancelar=cancelar,
+                    chave_conversa=chave_conversa,canal=canal,pessoa=pessoa,
+                    retomar=task_state.eh_comando_retomada(last_input))
+            # 12/11: "pode entrar e jogar por conta própria; o que fazer lá você decide" → modo livre (ela escolhe).
+            free=minecraft_agent.free_play(tarefa_turno.objetivo)
+            if free:
+                last_input=next((str(m.get('content','')) for m in reversed(mensagens) if m.get('role')=='user'),'')
+                return await self._ciclo_minecraft_livre(tarefa_turno,free,cancelar=cancelar,
                     chave_conversa=chave_conversa,canal=canal,pessoa=pessoa,
                     retomar=task_state.eh_comando_retomada(last_input))
             from core import project_agent
@@ -4534,11 +4723,19 @@ class InterfaceHoshino(App):
         continuous_activity = modo_operacao == 'autonomo_continuo'
         private_activity = modo_operacao in {'autonomo_exploracao','autonomo_continuo'}
         activity_comment_only = False
-        conferencia_cobrada = False  # 07/11: "vou verificar" sem chamar ferramenta → uma recuperação por turno
+        # 07/11: "vou verificar" sem chamar ferramenta → recuperação dirigida. 12/11: até MAX_COBRANCAS por turno
+        # quando ela anuncia uma ferramenta oferecida ("vou conectar"): uma só não bastava com os pesos treinados.
+        cobrancas_conferencia = 0
+        honestidade_cobrada = False  # 11/11: depois da cobrança, anunciou de novo → diz que não fez
+        link_cobrado = False  # 07/11: pediu o link e a resposta não tem nenhum → uma recuperação por turno
         usadas = []
         conteudo = ""
         ultimo_resultado_tarefa = ""
         objetivo_entrada = next((m.get("content", "") for m in reversed(trabalho) if m.get("role") == "user"), "")
+        # 07/11 (teste de uso): "você pode abrir um vídeo…" e depois "no youtube um video": o pedido de ação estava na
+        # mensagem anterior. A trava de "vou abrir" sem fazer olha as últimas falas da pessoa, não só a última.
+        pedido_recente = " ".join(str(m.get("content", ""))[:400] for m in
+                                  [m for m in trabalho if m.get("role") == "user"][-3:])
         # O worker decide explicitamente se o turno está vinculado a uma tarefa.
         # Não recarregue uma tarefa pausada apenas porque a chave da conversa existe.
         tarefa_atual = tarefa_turno
@@ -4955,14 +5152,54 @@ class InterfaceHoshino(App):
                         )})
                         continue
                 # 07/11: anunciou ou alegou conferência sem chamar ferramenta ("O que aparece na ficha é…").
+                # Teste de uso 07/11: também ação ("Vou abrir o Firefox. Apareceu uma aba vazia.") sem chamada.
                 from core import conferencia
-                if (not conferencia_cobrada and not tarefa_turno and passo + 1 < limite_passos
-                        and conferencia.anunciou_sem_conferir(conteudo, ferramentas_usadas=usadas,
-                                                              ferramentas_oferecidas=ferramentas)):
-                    conferencia_cobrada = True
-                    diagnostics.cognitive("check_announced_without_tool", candidate=diagnostics.content_meta(conteudo))
+                conferencia_cobrada = cobrancas_conferencia > 0
+                falta = (None if tarefa_turno or passo + 1 >= limite_passos
+                         or cobrancas_conferencia >= conferencia.MAX_COBRANCAS
+                         else conferencia.anunciou_sem_fazer(conteudo, ferramentas_usadas=usadas,
+                                                             ferramentas_oferecidas=ferramentas,
+                                                             pedido=pedido_recente))
+                if falta and conferencia_cobrada and not conferencia.ferramentas_anunciadas(
+                        conteudo, ferramentas, pedido_recente, usadas=usadas):
+                    falta = None  # sem ferramenta para apontar, continua valendo uma cobrança só (07/11)
+                if (not falta and not link_cobrado and passo + 1 < limite_passos and conferencia.faltou_link(
+                        conteudo, pedido=objetivo_entrada,
+                        saidas_ferramentas=[m.get("content") for m in trabalho if m.get("role") == "tool"])):
+                    link_cobrado = True
+                    diagnostics.cognitive("link_missing_in_answer", candidate=diagnostics.content_meta(conteudo))
                     trabalho.append({"role": "assistant", "content": conteudo})
-                    trabalho.append({"role": "user", "content": conferencia.PEDIDO})
+                    trabalho.append({"role": "user", "content": conferencia.PEDIDO_LINK})
+                    continue
+                if (not falta and conferencia_cobrada and not honestidade_cobrada and not tarefa_turno
+                        and conferencia.anunciou_sem_fazer(conteudo, ferramentas_usadas=usadas,
+                                                           ferramentas_oferecidas=ferramentas, pedido=pedido_recente)):
+                    # 11/11: cobrada e anunciou de novo sem chamar nada. O anúncio falso não vai para a pessoa.
+                    honestidade_cobrada = True
+                    diagnostics.cognitive("announced_again_after_recovery", candidate=diagnostics.content_meta(conteudo))
+                    honesto_msgs = trabalho + [{"role": "assistant", "content": conteudo},
+                                               {"role": "user", "content": conferencia.PEDIDO_HONESTO}]
+                    try:
+                        honesto = await self.chamar_modelo(honesto_msgs, None, forcar_sem_pensar=True)
+                        conteudo = limpar_raciocinio(honesto.get("content", "")).strip()
+                    except Exception as exc:  # noqa: BLE001
+                        diagnostics.exception("llm.honest_retry_failure", exc, request_id=request_id)
+                        conteudo = ""
+                    if not conteudo or conferencia.anunciou_sem_fazer(
+                            conteudo, ferramentas_usadas=usadas, ferramentas_oferecidas=ferramentas, pedido=pedido_recente):
+                        conteudo = conferencia.FALLBACK_HONESTO
+                    diagnostics.cognitive("announced_again_honest_reply", candidate=diagnostics.content_meta(conteudo))
+                if falta:
+                    cobrancas_conferencia += 1
+                    diagnostics.cognitive("check_announced_without_tool" if falta == "conferir"
+                                          else "action_announced_without_tool",
+                                          candidate=diagnostics.content_meta(conteudo), cobranca=cobrancas_conferencia,
+                                          anunciadas=conferencia.ferramentas_anunciadas(
+                                              conteudo, ferramentas, pedido_recente, usadas=usadas))
+                    trabalho.append({"role": "assistant", "content": conteudo})
+                    trabalho.append({"role": "user", "content": conferencia.cobranca(
+                        conteudo, falta, ferramentas_oferecidas=ferramentas, pedido=pedido_recente,
+                        ferramentas_usadas=usadas)})
                     continue
                 # Sintoma observado em campo: o modelo "pensa" (thinking com
                 # texto real) mas o campo content volta vazio e sem tool_calls.
@@ -5144,6 +5381,10 @@ class InterfaceHoshino(App):
                 progress.ferramenta_fim(nome, ok_resultado)
                 assinatura = cognition.assinatura_chamada(nome, args)
                 classe = cognition.registrar_ferramenta(frame, nome, resultado)
+                chave_abertura = _chave_abertura(nome, args)
+                if (chave_abertura and classe == "sucesso" and isinstance(resultado, dict)
+                        and not resultado.get("repetida")):
+                    frame.aberturas_feitas[chave_abertura] = " ".join(str(resultado.get("output", "")).split())[:200]
                 if tarefa_turno and chave_conversa:
                     estado_tool = resultado.get("status", "unknown") if isinstance(resultado, dict) else "unknown"
                     saida_tool = resultado.get("output", "") if isinstance(resultado, dict) else str(resultado or "")
@@ -5717,15 +5958,19 @@ class InterfaceHoshino(App):
         if not pessoa_atual:
             return
         nome = relatorio.get("nome_detectado")
+        canal_efetivo = canal or self.canal_atual
         if nome and pessoa_atual.get("nome") in ("", "alguém", 'usuario', 'usuário', None):
             people.renomear(pessoa_atual["id"], nome)
             # Uma autoafirmação em canal externo é apenas um dado sobre a conversa.
             # Papel de criador nunca é uma concessão automática de poder.
             aviso = ""
-            if (canal or self.canal_atual) in ("tui", "voz"):
+            # 07/11: o chat da Central (localhub) é o canal local de hoje; lá o papel só vale se foi declarado.
+            if canal_efetivo in ("tui", "voz") or (canal_efetivo == "localhub" and relatorio.get("papel") == "criador"):
                 people.definir_papel(pessoa_atual["id"], "criador")
                 aviso = avancar_origem(nome)
-            pessoa_atual = people.identificar(nome=nome, canal=canal or self.canal_atual)
+            # 07/11: recarrega a MESMA pessoa. Procurar pelo nome no localhub (onde a busca por nome não existe)
+            # criava um segundo "Gustavo Rosa Nunes" sem canal, e a conversa seguia presa a ele.
+            pessoa_atual = people.por_id(pessoa_atual["id"]) or pessoa_atual
             if pessoa_atual.get("id") == (self.pessoa or {}).get("id"):
                 self.pessoa = pessoa_atual
             if pessoa_atual.get("id") == (getattr(self, "pessoa_local", {}) or {}).get("id"):
@@ -5775,7 +6020,8 @@ class InterfaceHoshino(App):
         if geracao != self._memory_generation:
             return
         bruto = resposta.get("content", "")
-        revisoes = await self.revisar_memoria(scribe.ler_extracao(bruto), entrada, saida, fontes=fontes)
+        sujeito = str((origem or {}).get('sujeito_id') or (origem or {}).get('autor_id') or '') if isinstance(origem, dict) else ''
+        revisoes = await self.revisar_memoria(scribe.ler_extracao(bruto), entrada, saida, fontes=fontes, sujeito=sujeito)
         if geracao != self._memory_generation:
             return
         gravados = scribe.aplicar_extracao(bruto, origem=origem, revisoes=revisoes)
@@ -5783,7 +6029,7 @@ class InterfaceHoshino(App):
             self.sys_log.write(f"[green]=> escriba: {len(gravados)} registro(s) novos"
                                f"[/green]")
 
-    async def revisar_memoria(self, candidatos: list, entrada: str, saida: str, fontes=None) -> dict | None:
+    async def revisar_memoria(self, candidatos: list, entrada: str, saida: str, fontes=None, sujeito: str = '') -> dict | None:
         """Segunda chamada, só para conferir cada anotação do escriba antes de guardar (pedido humano 07/11).
 
         Recebe também as FONTES do turno (saídas das ferramentas que ela usou). Quando a anotação afirma algo do
@@ -5822,12 +6068,25 @@ class InterfaceHoshino(App):
             if not any(e["function"]["name"] == "ficha_da_maquina" for e in ferramentas):
                 ferramentas.append(revisor_memoria.ESQUEMA_FICHA)
         revisoes = {}
+        # 07/11 (teste de uso): "você pode abrir um vídeo da rtx 4070 ti super" e depois "no youtube um video": a anotação
+        # juntava as duas falas e "RTX 4070" parecia ter vindo da entidade. A origem confere as últimas falas da pessoa.
+        try:
+            canal = diagnostics.current_turn_context().get('channel') or 'localhub'
+            antes = [r[5] for r in history.conversation(12, channel=canal) if r[1] == 'in'][-4:]
+            pessoa_antes = "\n".join(" ".join(str(t)[:400].split()) for t in antes if str(t).strip() != str(entrada).strip())
+        except Exception:  # noqa: BLE001 — sem histórico, só a fala atual
+            pessoa_antes = ""
         for posicao, candidata in enumerate(candidatos):
             inicio = time.monotonic()
             try:
-                antigas = await asyncio.to_thread(saber.semelhantes, candidata["conteudo"], revisor_memoria.MAX_ANTIGAS)
+                # 11/11: todas as fontes e, antes, as do mesmo rótulo fixo (memory/rotulos): o que a regra acabou de
+                # guardar desta mesma fala aparece para o revisor, que não deixa repetir.
+                antigas = await asyncio.to_thread(saber.semelhantes, candidata["conteudo"], revisor_memoria.MAX_ANTIGAS,
+                                                  tipo=str(candidata.get("tipo") or ""),
+                                                  chave=str(candidata.get("chave") or ""), sujeito=sujeito or None)
                 decisao, info = await revisor_memoria.revisar(
-                    candidata, antigas, pessoa=entrada, resposta=saida, nome=config.ENTIDADE_NOME, fontes=fontes,
+                    candidata, antigas, pessoa=entrada, pessoa_antes=pessoa_antes, resposta=saida,
+                    nome=config.ENTIDADE_NOME, fontes=fontes,
                     chamar=chamar, executar=executar if ferramentas else None, ferramentas=ferramentas)
             except TurnoCancelado:  # vai dormir: para de revisar; o resto grava como antes, sem erro de fundo
                 diagnostics.emit('memory.review_failed', level='WARN', error_type='entity_sleep', modo=modo,
@@ -5844,7 +6103,10 @@ class InterfaceHoshino(App):
             revisoes[posicao] = decisao
             diagnostics.emit('memory.review', modo=modo, decisao=decisao["motivo"], guardar=decisao["guardar"],
                              conteudo=candidata["conteudo"][:160], substitui=decisao["substitui"],
+                             citacao=str(decisao.get("citacao") or "")[:200], base=decisao.get("base"),
                              antiga=decisao["antiga_conteudo"], fontes=info["fontes"],
+                             comparadas=[dict(rotulo=a.get("rotulo"), fonte=a.get("fonte"),
+                                              mesmo_rotulo=a.get("mesmo_rotulo")) for a in antigas],
                              conferencia=info["conferencia"], segundos=round(time.monotonic() - inicio, 2))
         return revisoes
 

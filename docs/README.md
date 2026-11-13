@@ -9,6 +9,8 @@ não confirma automaticamente o inventário ou funcionamento de hoje.
 Comece por **[ESTADO_ATUAL.md](ESTADO_ATUAL.md)**: quem roda e onde, o que está valendo, como verificar, problemas
 conhecidos e próximos passos.
 
+**12/11/2026:** [ação anunciada sem ferramenta, banco que ensina a chamar e Minecraft livre](ACAO_ANUNCIADA_E_MINECRAFT_20261112.md).
+
 **07/11/2026:**
 - [Fatos e correções](FATOS_E_CORRECOES_20261107.md): prompt com exemplos, ficha da máquina, raciocínio em pergunta
   de fato, trava "disse que conferiu", correção guardada. Medido de 21/50 para 40/42.

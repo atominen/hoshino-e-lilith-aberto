@@ -11,7 +11,7 @@ from native_controls import QTabWidget,QComboBox,QDoubleSpinBox
 import html
 
 GIB=1024**3
-TIERS=(('Ferro','ferro','#91a0af'),('Ouro','ouro','#e8bd62'),('Diamante','diamante','#82d8f7'),('Platina','platina','#e4dcfa'))
+TIERS=(('Bronze','bronze','#c98a5b'),('Ferro','ferro','#91a0af'),('Ouro','ouro','#e8bd62'),('Diamante','diamante','#82d8f7'))
 
 
 class MemoryCard(QGroupBox):
@@ -51,7 +51,7 @@ class KnowledgePanel(QWidget):
         create=QPushButton('Novo cartão');row.addWidget(create);create.setEnabled(edit is not None);create.clicked.connect(self.create)
         button.clicked.connect(self.reset);self.search.returnPressed.connect(self.reset);self.kind.currentIndexChanged.connect(self.reset)
         self.summary=QLabel('Conhecimento próprio da entidade selecionada.');self.summary.setWordWrap(True);layout.addWidget(self.summary)
-        importance_hint=QLabel('Importância: Ferro → Ouro → Diamante → Platina. Define organização e destaque, não confiança/veracidade. Todos podem ser apagados explicitamente.');importance_hint.setWordWrap(True);importance_hint.setObjectName('subtitle');layout.addWidget(importance_hint)
+        importance_hint=QLabel('Importância: Bronze → Ferro → Ouro → Diamante. Bronze guarda sozinho o que a pessoa disse, mesmo passageiro. Define organização e destaque, não confiança/veracidade. Todos podem ser apagados explicitamente.');importance_hint.setWordWrap(True);importance_hint.setObjectName('subtitle');layout.addWidget(importance_hint)
         self.grid=QGridLayout();self.grid.setSpacing(16);self.grid.setContentsMargins(8,4,8,10);self.grid.setAlignment(Qt.AlignTop);layout.addLayout(self.grid)
         pages=QHBoxLayout();layout.addLayout(pages);self.previous=QPushButton('Anterior');self.next=QPushButton('Próxima')
         pages.addWidget(self.previous);pages.addStretch();pages.addWidget(self.next)

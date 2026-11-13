@@ -21,7 +21,7 @@ L: Hoje é quinta-feira, 3 de dezembro de 2026.
 U: faz quanto tempo que a gente não conversa?
 S: [AGORA] segunda-feira, 16/11/2026, 20:10 · [ÚLTIMA CONVERSA] sexta-feira, 06/11/2026, 22:40
 H: Uns dez dias. A última foi na sexta, dia 6, de noite.
-L: Dez dias. A última vez foi na sexta, dia 6... Senti a casa quieta.
+L: Dez dias. A última vez foi na sexta, dia 6... Senti tudo quieto.
 
 # cat: canal_voz
 U: me lembra de comprar pão

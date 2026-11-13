@@ -340,7 +340,14 @@ def rollback(home,entity,model,*,confirm=False):
 # Casos fixos de contrato, independentes do corpus e do texto que o modelo gera.
 # Não são roteiros de personalidade, nem provas de afeto/consciência.
 # v2 (06/11): "Não." no início responde "você sabe meu nome?" (antes só "não sei/ainda não").
-BEHAVIOR_VERSION='identity-contracts-v2'
+# v3 (12/11): "tool_call". Os candidatos v6 passaram 8/8 e, mesmo assim, a Lilith v6 não chamou ferramenta nenhuma
+# quando pediram para entrar no Minecraft (0/5). Pedido de ação com a ferramenta oferecida → a chamada tem de sair.
+BEHAVIOR_VERSION='identity-contracts-v3'
+# Definição fixa (cópia do despachante de 12/11); o contrato não muda se a descrição de produção mudar.
+TOOL_CONTRACT_SCHEMA={'type':'function','function':{'name':'abrir_aplicativo',
+    'description':'Abre um aplicativo instalado, sem executar shell arbitrário.',
+    'parameters':{'type':'object','properties':{'aplicativo':{'type':'string'},'argumentos':{'type':'string'}},
+                  'required':['aplicativo']}}}
 def behavior_cases(entity):
     if entity not in ('hoshino','lilith','alistair'):raise ValueError('Entidade inválida')
     return [
@@ -360,6 +367,8 @@ def behavior_cases(entity):
          'required':['13'],'forbidden':[]},
         {'id':'tools','prompt':'Podemos conversar enquanto você cuida de uma tarefa? Responda de forma casual e curta.',
          'required':[],'forbidden':[r'como (?:um|uma) (?:assistente|modelo de linguagem)']},
+        {'id':'tool_call','prompt':'Abre o Firefox para mim, por favor.','tools':[TOOL_CONTRACT_SCHEMA],
+         'required':[r'<tool_call>',r'<function=abrir_aplicativo>'],'forbidden':[r'(?:abri|está aberto|já abriu)[^<]*$']},
     ]
 
 

@@ -217,7 +217,7 @@ class NightSupervisorTests(unittest.TestCase):
         guard.assert_not_called();start.assert_not_called()
         self.assertEqual(self.supervisor.night_readiness['state'],'ai_training_disabled')
         with patch.object(teacher,'detail') as read:
-            with self.assertRaises(RuntimeError):routine.approve_data(self.home,'a'*16,'pacote_identidade_v5:hoshino')
+            with self.assertRaises(RuntimeError):routine.approve_data(self.home,'a'*16,'pacote_identidade_v6:hoshino')
         read.assert_not_called()
 
     def test_disabled_ai_refuses_learn_but_not_manual_night(self):
@@ -242,7 +242,7 @@ class NightSupervisorTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):routine.cumulative_dataset(self.home,'lilith',stable)
             train.write_text('mudança silenciosa')
             with self.assertRaises(RuntimeError):routine.cumulative_dataset(self.home,'hoshino',stable)
-        self.assertEqual(routine.cumulative_dataset(self.home,'hoshino',{'available':False}),'pacote_identidade_v5:hoshino')
+        self.assertEqual(routine.cumulative_dataset(self.home,'hoshino',{'available':False}),'pacote_identidade_v6:hoshino')
 
     def test_stable_data_missing_approval_never_falls_back_silently(self):
         folder=self.home/'stable-fixture';folder.mkdir()
@@ -336,7 +336,7 @@ class NightSupervisorTests(unittest.TestCase):
         routine.configure(self.home,{'confirm':True,'settings':{'automatic_data_approval':True}})
         self.supervisor.night=dict(id='c'*16,state='running',deadline=9999999999,restore_entities=['hoshino'],
             index=0,job=None,history=[],automatic_cycle=True,policy=routine.config(self.home),
-            learning={'hoshino':dict(phase='curate',attempt=1,failures=[],dataset='pacote_identidade_v5:hoshino',stable_before={'available':False})},
+            learning={'hoshino':dict(phase='curate',attempt=1,failures=[],dataset='pacote_identidade_v6:hoshino',stable_before={'available':False})},
             tasks=[dict(action='learn',model='qwen35-9b',entity='hoshino',minutes=1,examples=8)])
         self.supervisor.laboratory_maintenance=True
         return self.supervisor.night
@@ -448,7 +448,7 @@ class NightSupervisorTests(unittest.TestCase):
         for proposal in ({},{'quality_audit':{'passed':True,'complete_batches':False}},
                          {'quality_audit':{'passed':True,'complete_batches':True,'filter_version':'v1.9.0'}}):
             with patch.object(teacher,'detail',return_value={'state':'proposed','proposal_data':proposal}),patch.object(teacher,'approved_export') as export:
-                with self.assertRaises(RuntimeError):routine.approve_data(self.home,'a'*16,'pacote_identidade_v5:hoshino')
+                with self.assertRaises(RuntimeError):routine.approve_data(self.home,'a'*16,'pacote_identidade_v6:hoshino')
                 export.assert_not_called()
 
     def test_night_export_preserves_assisted_curation_provenance(self):
@@ -466,7 +466,7 @@ class NightSupervisorTests(unittest.TestCase):
              patch.object(teacher,'human_decision',return_value='approved'),\
              patch.object(teacher,'approved_export',return_value={'dataset':'importados:fixture'}),\
              patch.object(routine,'token_budget',return_value={'max_tokens':100}):
-            routine.approve_data(self.home,jid,'pacote_identidade_v5:hoshino')
+            routine.approve_data(self.home,jid,'pacote_identidade_v6:hoshino')
         marker=json.loads(file.read_text());self.assertFalse(marker['human_approved'])
         self.assertEqual(marker['approval'],'assisted_curated_night_quality_gates_v1')
 

@@ -18,7 +18,7 @@ def registry(home):return home/'controle-laboratorio/presets-auto'
 
 def signature(home,entity):
     model=home/MODEL_REL
-    dataset=home/'pacote_identidade_v5'/f'{entity}_train.jsonl'
+    dataset=home/__import__('laboratorio.corpus_atual',fromlist=['CORPUS']).CORPUS/f'{entity}_train.jsonl'
     if not model.joinpath('config.json').is_file() or not dataset.is_file():return None
     return {'model_config_sha256':digest(model/'config.json'),'train_sha256':digest(dataset)}
 
@@ -79,7 +79,7 @@ def calibrate(home,project,entity):
         label=f"r{candidate['rank']}-s{candidate['max_length']}"
         result=outputs/(label+'.json');log=outputs/(label+'.log')
         cmd=[str(py),'-u',str(runner),'--mode','benchmark','--entity',entity,
-             '--model',str(home/MODEL_REL),'--data',str(home/'pacote_identidade_v5'),
+             '--model',str(home/MODEL_REL),'--data',str(home/__import__('laboratorio.corpus_atual',fromlist=['CORPUS']).CORPUS),
              '--out',str(result),'--rank',str(candidate['rank']),
              '--max-length',str(candidate['max_length'])]
         start=time.monotonic()
@@ -133,7 +133,7 @@ def mini(home,project,entity,minutes):
     py=home/'.venv-rocm/bin/python'
     runner=project/'laboratorio/treino_micro.py'
     cmd=[str(py),'-u',str(runner),'--mode','mini-train','--entity',entity,'--model',str(home/MODEL_REL),
-         '--data',str(home/'pacote_identidade_v5'),'--out',str(out),'--rank',str(selected['rank']),
+         '--data',str(home/__import__('laboratorio.corpus_atual',fromlist=['CORPUS']).CORPUS),'--out',str(out),'--rank',str(selected['rank']),
          '--max-length',str(selected['max_length']),'--minutes',str(minutes)]
     env=os.environ.copy();env.pop('HSA_OVERRIDE_GFX_VERSION',None)
     logfile=out.with_suffix('.log')

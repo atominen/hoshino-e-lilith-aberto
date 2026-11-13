@@ -4,8 +4,14 @@
 Alistair) foi apagado e o v5, escrito à mão, passou a ser o corpus original de cada entidade.
 Caminhos relativos ao `home` do laboratório (`laboratorio-local`).
 """
-CORPUS = 'pacote_identidade_v5'
+# 08/11/2026 (pedido humano: "a gente só precisa treinar o 9b"): o banco v6 ("super versão") passa a ser o corpus de
+# treino. 12/11 (pedido humano "atualize o banco de treinamento"): os exemplos com ferramenta entram no treino, no
+# formato real do Qwen3.5 (laboratorio/formato_treino.py, até 768 fichas), mais o aspecto "agir" (pares_agir.txt).
+CORPUS = 'pacote_identidade_v6'
 ENTIDADES = ('hoshino', 'lilith', 'alistair')
+# Corpus que ensinam nome, identidade e costumes: pesos treinados em qualquer um deles já trazem a identidade (o prompt
+# de sistema pode ser o reduzido). 08/11: a troca v5 → v6 não devolve o prompt completo aos pesos do v5.
+CORPOS_DE_IDENTIDADE = ('pacote_identidade_v5', 'pacote_identidade_v6')
 
 
 def _checar(entity):

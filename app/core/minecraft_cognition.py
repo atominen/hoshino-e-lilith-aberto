@@ -41,13 +41,35 @@ CHOICE_PROMPT=('Você é {entity}. O objetivo geral permanece até ser verificad
     'Retorne somente o JSON do formato.')
 
 
+def ninguem_online(state) -> bool:
+    """12/11: só ela no servidor (a ponte informa a lista). Sem a informação (ponte antiga), não presume nada."""
+    return isinstance(state, dict) and state.get('onlinePlayers') == []
+
+
+def mochila_cheia(state):
+    """12/11: espaços livres da mochila (a ponte informa); None quando a ponte não informa."""
+    free=state.get('freeSlots') if isinstance(state,dict) else None
+    return free if type(free) is int and free<=1 else None
+
+
+def mochila_cheia_texto(state):
+    free=mochila_cheia(state)
+    if free is None:return None
+    return (f'Mochila cheia ({free} espaço livre): nada novo entra (coletar e caçar não recolhem). Abra espaço antes, '
+            'jogando fora sobras (opções jogar_fora) ou usando/fabricando algo.')
+
+
+SOZINHA_NO_SERVIDOR = ('Só você está no servidor agora: ninguém lê o chat do jogo. Pergunta no chat fica sem resposta; '
+                       'descubra pelo mundo (percepcao, procurar, explorar) ou pesquise.')
+
+
 def decision_view(view):
     """Contexto operacional sem repetir todas as faltas em cada recibo passado."""
     keys=('subobjetivo_atual','objetivo','estado_observado','percepcao','possibilidades',
           'meu_plano','falta_para_concluir','retorno_meta_intermediaria',
           'aviso_sobrevivencia','progresso_observado','barreira','minhas_reflexoes','retorno_escolha','perigo','morte',
           'receitas_consultadas','meu_conhecimento','minhas_estacoes','jogadores_conhecidos','sem_picareta','coleta_sem_ferramenta','conversa_no_chat',
-          'ultimos_recibos','ultima_recusa','intermediario',
+          'ultimos_recibos','ultima_recusa','intermediario','jogadores_online','sozinha_no_servidor','mochila_cheia',
           'chat_do_minecraft','chat_fora_do_buffer')
     result={k:deepcopy(view[k]) for k in keys if k in view}
     if isinstance(result.get('estado_observado'),dict):result['estado_observado'].pop('recentChat',None)
@@ -287,13 +309,28 @@ def no_pickaxe(state):
     return {'aviso':text}
 
 
+# 12/11: ela registrou "Picareta de pedra pronta" 4 vezes em 10 min; cada tábua fabricada reabria a opção.
+REGISTER_COOLDOWN=10
+
+
+def last_registration(cp):
+    return max((r.get('step',-1) for r in cp.get('trajectory',[])
+                if r.get('tool')=='registrar_procedimento' and r.get('status')=='success'),default=-1)
+
+
+def registration_cooldown(cp):
+    """Passos que ainda faltam para poder registrar outro procedimento (0 = pode)."""
+    learned=last_registration(cp)
+    return 0 if learned<0 else max(0,REGISTER_COOLDOWN-(cp.get('steps',0)-learned))
+
+
 def recent_achievement(cp,window=3):
     """Recibos de produção que aumentaram o inventário nos últimos passos, sem registro depois."""
+    if registration_cooldown(cp):return []
     rows=[r for r in cp.get('trajectory',[]) if cp.get('steps',0)-r.get('step',0)<window
           and r.get('tool') in PRODUCING and r.get('status')=='success'
           and any(v>0 for v in (r.get('inventory_delta') or {}).values())]
-    learned=max((r.get('step',-1) for r in cp.get('trajectory',[])
-                 if r.get('tool')=='registrar_procedimento' and r.get('status')=='success'),default=-1)
+    learned=last_registration(cp)
     return [r['receipt_id'] for r in rows if r.get('receipt_id') and r['step']>learned]
 
 
@@ -790,9 +827,10 @@ def action_options(perception,state,subgoal=None,achievement=(),final=(),plan_it
             # 28/10: renasceu sem picareta 24 blocos acima do local; à mão não deu tempo.
             options['recuperar_itens']['effect']+=(f' Atenção: o local fica {depth} blocos abaixo e você está sem picareta; '
                                                    'cavar pedra à mão é lento e pode não dar tempo.')
-    options['falar_no_chat']=dict(tool='minecraft_chat',arguments={},needs='consulta',arg='texto',label='falar_no_chat',max=240,
-        effect='Dizer no chat do jogo o texto escrito em consulta: perguntar ao humano o que você não sabe '
-               'ou responder chat_do_minecraft; a resposta dele volta em chat_do_minecraft e a tarefa continua.')
+    if not ninguem_online(state):  # 12/11: sozinha no servidor, falar no chat não tem quem leia
+        options['falar_no_chat']=dict(tool='minecraft_chat',arguments={},needs='consulta',arg='texto',label='falar_no_chat',max=240,
+            effect='Dizer no chat do jogo o texto escrito em consulta: perguntar ao humano o que você não sabe '
+                   'ou responder chat_do_minecraft; a resposta dele volta em chat_do_minecraft e a tarefa continua.')
     # 30/10 (pedido humano): entregar item a um jogador por perto; ela escreve qual e quantos (consulta/quantidade).
     own=str(state.get('username') or '').lower()
     people=sorted((e for e in state.get('nearbyEntities') or [] if isinstance(e,dict) and isinstance(e.get('username'),str)
@@ -803,6 +841,12 @@ def action_options(perception,state,subgoal=None,achievement=(),final=(),plan_it
             needs='consulta',label='entregar',max=40,
             effect=f"Ir até {person['username']} (a {person['distance']} blocos) e jogar para ele um item seu: escreva o ID "
                    'do item em consulta e quantos em quantidade (padrão 1).')
+    if mochila_cheia(state) is not None:
+        # 12/11: com a mochila cheia ela foi procurar carvão em outro lugar duas vezes; as sobras ficam à vista.
+        sobras=sorted(((n,c) for n,c in counts.items() if n in BULK or n in extra),key=lambda x:-x[1])[:3]
+        for name,have in sobras:
+            options['jogar_fora:'+name]=dict(tool='minecraft_jogar_item',arguments={'nome':name,'quantidade':min(64,have)},
+                effect=f'Mochila cheia: jogar fora {min(64,have)} {name} (você tem {have}) e abrir espaço.')
     options['estado']=dict(tool='minecraft_estado',arguments={},effect='Consultar o estado atual, sem fabricar nada.')
     options['outra']=dict(effect='Escolher uma ferramenta diferente no catálogo completo.')
     _relate_to_subgoal(options,perception,subgoal)

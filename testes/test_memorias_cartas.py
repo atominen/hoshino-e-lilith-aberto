@@ -63,7 +63,7 @@ class MemoriasCartas(unittest.TestCase):
                 self.assertEqual(denied.exception.code,403)
             chat=request('control/memory?entity=hoshino&scope=chat')
             self.assertNotIn('SEMANTIC_SENTINEL',json.dumps(chat))
-            data=self.importance(card,'platina')
+            data=self.importance(card,'diamante')
             with self.assertRaises(HTTPError) as denied:request('control/knowledge',data)
             self.assertEqual(denied.exception.code,403)
             access=request('control/knowledge/unlock',dict(entity='hoshino',password=self.PASSWORD))['access_token']
@@ -90,16 +90,16 @@ class MemoriasCartas(unittest.TestCase):
     def test_rank_order_stale_version_invalid_level_and_entity_isolation(self):
         other=refinement.Refinamento.seed_logic(self,'lilith');other_before=other.read_bytes()
         low=self.create('Abaixo');high=self.create('Acima')
-        for bad in ('bronze',None,True):
+        for bad in ('platina',None,True):  # 07/11: a platina saiu; bronze é nível válido
             with self.assertRaises(ValueError):self.control.save_knowledge(self.importance(high,bad))
         with self.assertRaises(ValueError):self.control.save_knowledge(self.importance(high,'ouro')|dict(card_id=None))
-        self.control.save_knowledge(self.importance(high,'platina'))
+        self.control.save_knowledge(self.importance(high,'diamante'))
         with self.assertRaises(ValueError):self.control.save_knowledge(self.importance(high,'ouro'))
         self.assertEqual(self.control.knowledge('hoshino',{})['items'][0]['id'],high['id'])
         self.assertEqual(other.read_bytes(),other_before)
 
     def test_delete_card_also_removes_its_importance(self):
-        card=self.create();self.control.save_knowledge(self.importance(card,'platina'))
+        card=self.create();self.control.save_knowledge(self.importance(card,'diamante'))
         card=self.control.knowledge('hoshino',{'id':card['id']})['items'][0]
         targets=[dict(table=r['table'],id=r['record_id'],revision=r['revision']) for r in card['entries']]
         self.control.save_knowledge(dict(entity='hoshino',action='delete',confirm=True,password=self.PASSWORD,records=targets,card_id=card['id'],card_revision=card['card_revision']))
@@ -114,7 +114,7 @@ class MemoriasCartas(unittest.TestCase):
         identity=paths.identity/'self_model.json';identity.write_text(json.dumps(dict(personality={'preferences':['Prefiro enigmas']},self_concept='Fixture preservada')));identity_before=identity.read_bytes()
         with contextlib.closing(sqlite3.connect(mm.db_path(paths))) as db,db:
             db.execute("INSERT INTO emotion_log(id,emocao,intensidade) VALUES('emotion','alegria',.8)")
-            db.execute("INSERT INTO memory_card_settings VALUES('concept:fixture','platina','2026-10-20')")
+            db.execute("INSERT INTO memory_card_settings VALUES('concept:fixture','diamante','2026-10-20')")
         data=dict(entity='alistair',all=True,targets=[]);preview=self.control.memory_preview(data)
         with patch.object(mm,'remove_vectors',return_value=0):
             result=self.control.delete_memory(data|dict(scope=preview['scope'],fingerprint=preview['fingerprint'],password=self.PASSWORD,confirm=True,request_id='memory-'+uuid.uuid4().hex))

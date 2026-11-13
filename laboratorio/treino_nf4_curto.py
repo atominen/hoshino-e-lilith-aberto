@@ -124,35 +124,36 @@ def hardware_lease(entity,model,*,teacher=False):
         finally:print('GPU_ANTES_DE_LIBERAR_LEASE',json.dumps(gpu_metrics.snapshot()),flush=True)
     print('LEASE_LIBERADO_AMD',json.dumps(gpu_metrics.snapshot()),flush=True)
 
-def tokenize(tok,messages,identity=None):
-    if len(messages)<2 or messages[-1].get('role')!='assistant':return None
-    if any(not isinstance(m.get('content'),str) or m.get('role') not in ('user','assistant') for m in messages):return None
-    context=[{'role':'system','content':identity}] if identity else []
-    prefix=tok.apply_chat_template(context+messages[:-1],tokenize=False,add_generation_prompt=True,enable_thinking=False)
-    full=tok.apply_chat_template(context+messages,tokenize=False,add_generation_prompt=False,enable_thinking=False)
-    a=tok(prefix,add_special_tokens=False).input_ids
-    b=tok(full,add_special_tokens=False).input_ids
-    if b[:len(a)]!=a or len(b)>256 or len(a)==len(b):return None
-    return b,[-100]*len(a)+b[len(a):]
+def tokenize(tok,messages,identity=None,tools=None):
+    # 12/11: formato compartilhado com o montador do banco (laboratorio/formato_treino.py). Texto continua igual;
+    # exemplo com `tools` usa o modelo de chat real e treina também as chamadas de ferramenta.
+    from .formato_treino import tokenize as _tokenize
+    return _tokenize(tok,messages,identity,tools)
+
+def corpus_has_tools(path):
+    for line in Path(path).read_text(encoding='utf8').splitlines():
+        if line.strip() and json.loads(line).get('tools'):return True
+    return False
 
 def load_samples(path,tok,identity=None):
     rows=[];allrows=0
     for line in path.read_text(encoding='utf8').splitlines():
         if not line.strip():continue
         allrows+=1
-        msg=json.loads(line).get('messages',[])
+        row=json.loads(line);msg=row.get('messages',[])
         if isinstance(msg,list):
-            x=tokenize(tok,msg,identity)
+            x=tokenize(tok,msg,identity,row.get('tools'))
             if x is not None:rows.append(x)
     if len(rows)<2 or len(rows)!=allrows:
         raise RuntimeError(f'Corpus inválido ou com exemplos longos: {len(rows)}/{allrows} selecionados')
     return rows
 
-def generation_inputs(tok,prompt,identity=None):
+def generation_inputs(tok,prompt,identity=None,tools=None):
     # Transformers atual retorna BatchEncoding, não um Tensor. Contrato explícito
     # evita confundir o contêiner com input_ids e perder a máscara de atenção.
+    # 12/11: o contrato "tool_call" oferece a ferramenta no mesmo formato da inferência (modelo de chat do Qwen3.5).
     messages=([{'role':'system','content':identity}] if identity else [])+[{'role':'user','content':prompt}]
-    return tok.apply_chat_template(messages,tokenize=True,
+    return tok.apply_chat_template(messages,tools=tools,tokenize=True,
            add_generation_prompt=True,enable_thinking=False,return_tensors='pt',return_dict=True)
 
 def load_existing_adapter(model,path,*,trainable):
@@ -404,6 +405,10 @@ def run(args):
     rank=getattr(args,'rank',4)
     preset={'rank':rank,'learning_rate':3e-5,'seed':247,'memory_profile':'frozen_bf16_v17',
             'embedding_cpu':embedding_cpu,'max_length':256}
+    if corpus_has_tools(args.train):
+        # 12/11: com exemplos de ferramenta a sequência vai até 768 fichas; o preset muda e exige medição nova.
+        from .formato_treino import max_length
+        preset['max_length']=max_length(True);preset['tool_calls']='qwen35_chat_template_v1'
     optimization_target=getattr(args,'optimization_seconds',None)
     if optimization_target is not None:preset['sampling']='epoch_shuffle_v18'
     if head_cpu:preset.update(head_cpu=True,head_cpu_dtype='float32',memory_profile='frozen_bf16_v18_head_cpu')
@@ -489,7 +494,7 @@ def run(args):
             system=identity  # MESMO contexto do treino; legado sem system continua sem system
             for case in behavior_cases(args.entity):
                 thermal_gate()
-                inputs=generation_inputs(tok,case['prompt'],system).to('cuda');ids=inputs['input_ids']
+                inputs=generation_inputs(tok,case['prompt'],system,case.get('tools')).to('cuda');ids=inputs['input_ids']
                 generate_started=time.monotonic()
                 token_gate=GenerationCoolingGate(thermal_gate,lambda:stop_requested)
                 print('AVALIACAO_CASO_INICIO',control,case['id'],flush=True)

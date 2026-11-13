@@ -110,6 +110,10 @@ def exportar():
     with tarfile.open(fileobj=io.BytesIO(arquivo)) as tar:
         tar.extractall(DESTINO, filter='data')
     (DESTINO / 'README.md').write_text(README.read_text(encoding='utf-8'), encoding='utf-8')
+    # O .gitignore do privado ignora *.sqlite e *.jsonl; na cópia pública o banco de treino precisa entrar.
+    with (DESTINO / '.gitignore').open('a', encoding='utf-8') as gi:
+        gi.write('\n# Cópia pública: o banco de treino compilado entra no repositório.\n'
+                 '!banco_treino_v6/\n!banco_treino_v6/banco.sqlite3\n!banco_treino_v6/pacote/\n!banco_treino_v6/pacote/*\n')
     destino_banco = DESTINO / 'banco_treino_v6'
     (destino_banco / 'pacote').mkdir(parents=True, exist_ok=True)
     if not BANCO.is_file() or not PACOTE.is_dir():

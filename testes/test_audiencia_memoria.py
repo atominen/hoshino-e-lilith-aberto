@@ -163,13 +163,13 @@ class AudienceMemory(unittest.TestCase):
         unrelated=self.memory('Álgebra linear',True,entidades=['D'])
         with closing(sqlite3.connect(self.path)) as db,db:
             db.execute(knowledge_editor.TIER_SCHEMA)
-            for card in ('B','C','D'):db.execute('INSERT INTO memory_card_settings VALUES(?,?,?)',('topic:'+card.lower(),'platina','now'))
+            for card in ('B','C','D'):db.execute('INSERT INTO memory_card_settings VALUES(?,?,?)',('topic:'+card.lower(),'diamante','now'))
             db.execute('UPDATE memories SET created_at=?,access_count=0',(history.utc_timestamp(),))
         with turn():
             rows=store.recall('Bicicleta',estruturado=True)
         self.assertEqual([r['id'] for r in rows],[high,low])
         self.assertEqual([r['confianca'] for r in rows],[.3,.3])
-        self.assertEqual([r['importance'] for r in rows],['platina','ferro'])
+        self.assertEqual([r['importance'] for r in rows],['diamante','ferro'])
         self.assertNotIn(private,[r['id'] for r in rows]);self.assertNotIn(unrelated,[r['id'] for r in rows])
 
     def test_card_mapping_explicit_identity_and_ambiguous_names(self):

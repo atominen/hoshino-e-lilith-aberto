@@ -116,7 +116,7 @@ ESQUEMAS = [
        "Se o comando passar do timeout, ele não morre: vira um job em segundo plano.",
        {"command": _t("O comando completo."),
         "ambiente": {"type": "string", "enum": ["sistema", "projeto", "oficina"],
-                     "description": "sistema = shell do usuário; projeto = venv da Hoshino; "
+                     "description": "sistema = shell do usuário; projeto = venv do projeto; "
                                     "oficina = seu ambiente isolado. Padrão: sistema."},
         "diretorio": _t("Diretório de trabalho (opcional)."),
         "timeout": _n("Segundos até virar job em segundo plano. Padrão 30, máximo 900."),
@@ -135,10 +135,10 @@ ESQUEMAS = [
     _f("discord_estado", "Mostra se a ponte Discord está online e qual foi a última conversa recebida."),
     _f("discord_diagnostico", "Verifica localmente se o adaptador Discord tem biblioteca, token configurado, sinal de vida e mensagens pendentes, sem revelar o token."),
     _f("estado_integracoes", "Mostra o estado confirmado dos serviços locais Discord e ponte Minecraft, sem iniciar nem encerrar nada."),
-    _f("iniciar_discord", "Inicia com segurança o adaptador Discord da Hoshino depois de validar a configuração local."),
-    _f("encerrar_discord", "Encerra com segurança o adaptador Discord da Hoshino."),
-    _f("iniciar_minecraft", "Inicia com segurança a ponte Minecraft da Hoshino e abre o launcher local conhecido. Não entra em mundo nem inicia servidor local sozinho."),
-    _f("encerrar_minecraft", "Desconecta o bot e encerra com segurança a ponte Minecraft da Hoshino."),
+    _f("iniciar_discord", "Inicia com segurança o meu adaptador Discord depois de validar a configuração local."),
+    _f("encerrar_discord", "Encerra com segurança o meu adaptador Discord."),
+    _f("iniciar_minecraft", "Inicia com segurança a minha ponte Minecraft e abre o launcher local conhecido. Não entra em mundo nem inicia servidor local sozinho."),
+    _f("encerrar_minecraft", "Desconecta o bot e encerra com segurança a minha ponte Minecraft."),
     _f("discord_contatos", "Lista contatos Discord persistentes, configurados e usuários que a ponte já observou."),
     _f("discord_localizar_usuario", "Localiza um usuário Discord por ID, username ou nome conhecido." , {"identificador": TXT}, ["identificador"]),
     _f("discord_adicionar_contato", "Salva um contato Discord para uso futuro. O identificador pode ser ID ou username de uma pessoa que a ponte já observou.", {"nome": TXT, "identificador": TXT}, ["nome", "identificador"]),
@@ -211,8 +211,8 @@ ESQUEMAS = [
     _f("executar_na_ia", "Executa experimento no laboratório IA isolado; rede fica desligada por padrão.",
        {"codigo": TXT, "arquivo": TXT, "linguagem": {"type": "string", "enum": ["python", "bash", "node"]},
         "timeout": _n("Segundos."), "sem_rede": {"type": "boolean"}}),
-    _f("abrir_pasta_entregas", "Abre a pasta Downloads/Hoshino onde os arquivos entregues ficam disponíveis."),
-    _f("enviar_arquivo_para_hoshino", "Importa um arquivo local para a caixa de entrada da Hoshino.",
+    _f("abrir_pasta_entregas", "Abre a pasta de Downloads onde os arquivos que eu entrego ficam disponíveis."),
+    _f("enviar_arquivo_para_hoshino", "Importa um arquivo local para a minha caixa de entrada.",
        {"caminhos": {"type": "array", "items": TXT}}, ["caminhos"]),
     _f("analisar_recebido", "Inspeciona um arquivo recebido sem executá-lo.", {"nome": TXT}, ["nome"]),
     _f("observar_imagem_recebida", "Confere se um arquivo recebido é imagem e mostra o caminho seguro para análise visual.",
@@ -558,8 +558,8 @@ ESQUEMAS = [
        "'ctrl+shift+space', 'ctrl+alt+m' ou '<ctrl>+<shift>+space'.",
        {"atalho": TXT}, ["atalho"]),
     _f("definir_modo_silencioso",
-       "Liga ou desliga o modo silencioso da Hoshino. Em silêncio ela não fala por iniciativa própria; "
-       "ela continua respondendo quando a pessoa falar com ela.",
+       "Liga ou desliga o meu modo silencioso. Em silêncio eu não falo por iniciativa própria; "
+       "continuo respondendo quando a pessoa falar comigo.",
        {"silencioso": {"type": "boolean"}}, ["silencioso"]),
     _f("estado_voz", "Mostra a voz de saída, dispositivo padrão e o último erro de síntese/reprodução, sem reproduzir áudio."),
     _f("testar_voz", "Reproduz uma frase curta de teste pela saída de áudio padrão."),
@@ -589,11 +589,11 @@ ESQUEMAS = [
     _f("minecraft_descobrir_lan",
        "Descobre mundos Minecraft Java abertos para LAN na rede local usando o anúncio padrão do jogo. Não altera a conexão."),
     _f("minecraft_conectar_lan",
-       "Procura um mundo Minecraft Java aberto para LAN, escolhe um anúncio disponível e conecta Hoshino. Só considera a conexão válida depois de verificar o estado real.",
+       "Procura um mundo Minecraft Java aberto para LAN, escolhe um anúncio disponível e me conecta. Só considera a conexão válida depois de verificar o estado real.",
        {"username": TXT, "version": TXT, "auth": {"type": "string", "enum": ["offline", "microsoft"]},
         "timeout": {"type": "number", "description": "Tempo de descoberta em segundos."}}),
     _f("minecraft_conectar",
-       "Conecta a Hoshino a um servidor Minecraft local/remoto usando Mineflayer. Para o laboratório local, use host 127.0.0.1 e versão 1.16.5.",
+       "Me conecta a um servidor Minecraft local/remoto usando Mineflayer. Para o laboratório local, use host 127.0.0.1 e versão 1.16.5.",
        {"host": _t("Endereço do servidor. Padrão 127.0.0.1."),
         "port": {"type": "integer", "description": "Porta do servidor. Padrão 25565."},
         "username": TXT,
@@ -1303,7 +1303,8 @@ GRUPOS = {
            r"laborat[óo]rio|ambiente ia|intelig[êe]ncia artificial|modelo local|treinar modelo"),
     "desktop": ({"abrir_aplicativo", "acao_desktop", "estado_desktop", "listar_janelas",
                  "focar_janela", "abrir_url", "abrir_pasta", "instalar_aplicativo", "abrir_pasta_entregas"},
-                r"\babrir\w*\b|\babra\b|\baplicativo\w*\b|\bprograma\w*\b|\bjanela\w*\b|\bmouse\b|\bteclado\b|\bclicar\w*\b|\bdesktop\b|instalar\s+app"),
+                r"\babrir\w*\b|\babra\b|\baplicativo\w*\b|\bprograma\w*\b|\bjanela\w*\b|\bmouse\b|\bteclado\b|\bclicar\w*\b|\bdesktop\b|instalar\s+app"
+                r"|\bfirefox\b|\bchrom(?:e|ium)\b|\bterminal\b|\bsteam\b|\bspotify\b|\bvlc\b|\bcalculadora\b"),
     "navegador": ({"browser_estado", "browser_abrir", "browser_abas", "browser_info",
                     "browser_clicar", "browser_preencher", "browser_tecla", "browser_rolar",
                     "browser_screenshot", "browser_fechar", "browser_voltar", "browser_avancar", "browser_recarregar", "discord_abrir_canal"},
@@ -1423,6 +1424,20 @@ def _texto_para_relevancia(contexto: str) -> str:
     return texto.casefold()
 
 
+def _padrao_interentidades(padrao: str) -> str:
+    """12/11: o próprio nome ("Lilith, entra lá", "LilithMC") e "identidade" (contém "entidade") ofereciam as
+    ferramentas das outras entidades. Para Hoshino e Lilith o próprio nome sai e os nomes viram palavra inteira."""
+    proprio = str(config.ENTIDADE_ID).casefold()
+    partes = []
+    for parte in padrao.split("|"):
+        if parte.casefold() == proprio:
+            continue
+        if parte in {"entidades?", "Hoshino", "Lilith", "Alistair"}:
+            parte = rf"\b{parte}\b"
+        partes.append(parte)
+    return "|".join(partes)
+
+
 def _relevantes(contexto: str) -> set:
     """Quais grupos a mensagem atual pede, ignorando ruído de caminhos."""
     if not contexto:
@@ -1431,6 +1446,8 @@ def _relevantes(contexto: str) -> set:
     ativos = set()
     for grupo, (_, padrao) in GRUPOS.items():
         if grupo not in _PALAVRA:
+            if grupo == "interentidades" and config.ENTIDADE_ID != "alistair":
+                padrao = _padrao_interentidades(padrao)
             _PALAVRA[grupo] = re.compile(padrao, re.IGNORECASE)
         if _PALAVRA[grupo].search(texto):
             ativos.add(grupo)
@@ -1498,12 +1515,15 @@ def _refinar_grupo(grupo: str, nomes: set[str], texto: str) -> set[str]:
         return {"workspace"}
 
     if grupo == "desktop":
-        if tem("abrir aplicativo", "abrir app", "abra ", "executar aplicativo", "programa"):
-            return {"abrir_aplicativo", "estado_desktop"}
+        # Teste de uso 07/11: "chamar a janela do firefox" (fechado) só oferecia listar/focar; sem como abrir, ela
+        # respondeu "Vou abrir o Firefox. Apareceu uma aba vazia." sem ferramenta nenhuma. Abrir vem junto de focar.
+        if tem("abrir", "abra", "abre ", "iniciar", "inicia ", "executar", "rodar", "lancar", "chamar", "chama ",
+               "programa", "aplicativo", " app"):
+            return {"abrir_aplicativo", "estado_desktop", "listar_janelas", "focar_janela"}
         if tem("clicar", "mouse", "teclado", "digitar", "pressionar", "atalho"):
             return {"acao_desktop", "estado_desktop", "listar_janelas", "focar_janela"}
         if tem("janela", "foco", "focar"):
-            return {"listar_janelas", "focar_janela", "estado_desktop"}
+            return {"listar_janelas", "focar_janela", "abrir_aplicativo", "estado_desktop"}
         if tem("instalar"):
             return {"instalar_aplicativo", "estado_desktop"}
         return {"estado_desktop", "listar_janelas"}
@@ -1623,6 +1643,10 @@ def esquemas(contexto: str = "", incluir_proprias: bool = True,
                                        [e for e in ESQUEMAS if e["function"]["name"] == atual]))
     else:
         permitidas = set(NUCLEO)
+        if config.ENTIDADE_ID != "alistair":
+            # 11/11 (regra do Gustavo): oferecidas sempre, ensinavam que existem outras e em que estado estão. Ficam
+            # para quando a pessoa fala de entidades ou de recursos (grupo "interentidades"), que é experiência.
+            permitidas -= {"entidades_status", "recursos_status"}
     if todos:
         permitidas = {e["function"]["name"] for e in ESQUEMAS if e["function"]["name"] not in LEGADOS_ARQUIVOS}
     else:
@@ -1888,6 +1912,15 @@ def contratos_tarefa(contexto: str = "", limite: int = 10) -> list[dict]:
 
     if re.search(r'\b(?:nao|nem|sem)\s+(?:calcule|calcular|recalcule|recalcular)\b',normalizado):
         candidatos_nomes.discard('calcular')
+
+    # 07/11 (teste de uso): "abre um vídeo do youtube sobre X" virou três browser_abrir na mesma busca, sem como chegar
+    # a um vídeo; e o pedido veio do PC2, mas abriu no PC1. Vídeo pede o caminho até o vídeo; PC2 pede as mãos de lá.
+    pede_mostrar = re.search(r"\b(?:abr\w*|coloc\w*|bot[ae]\w*|toc[ae]\w*|mostr\w*|assist\w*|pass[ae]\w*)\b", normalizado)
+    if pede_mostrar and re.search(r"\b(?:video|videos|youtube|clipe|musica)\b", normalizado):
+        add("web_search", "browser_info", "browser_clicar")
+    from core import pc2_remoto
+    if pc2_remoto.ORIGEM_TURNO.get() == "pc2" and (pede_mostrar or re.search(r"\b(?:execut\w*|rod[ae]\w*)\b", normalizado)):
+        add("abrir_no_pc2", "observar_tela")
 
     # Verificadores são capacidades da mesma operação, não novas decisões do
     # modelo. Eles ajudam o planejador a manter a cadeia ação -> evidência.

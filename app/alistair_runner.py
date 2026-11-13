@@ -353,6 +353,16 @@ class Alistair:
         return result
 
     def infer(self, payload, identifier):
+        # 07/11 (pedido humano): API escolhida na Central para o Alistair; falhou, segue pelo caminho local.
+        from core import executor_api
+        if executor_api.ativo('alistair'):
+            try:
+                mensagem = executor_api.chat(payload, 'alistair')
+                diagnostics.emit('llm.api_used', request_id=identifier, **executor_api.escolha('alistair'))
+                return {'done': True, 'done_reason': 'stop', 'message': mensagem}
+            except executor_api.APIIndisponivel as exc:
+                diagnostics.emit('llm.api_failed', level='WARN', request_id=identifier, error=str(exc)[:200],
+                                 fallback='local')
         if self.remote:
             try:
                 with resource_manager.lease("alistair_remote", "chat", entity="alistair"):

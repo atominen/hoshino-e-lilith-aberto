@@ -144,3 +144,84 @@ class BancoReal(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class FormatoFerramenta(unittest.TestCase):
+    """12/11: exemplos com ferramenta entram no treino no formato real do Qwen3.5, com as chamadas como alvo."""
+    MODELO = RAIZ / 'laboratorio-local' / 'modelos' / 'qwen3.5-9b-oficial-hf'
+    TOOLS = [{'type': 'function', 'function': {'name': 'minecraft_conectar', 'description': 'Conecta ao servidor.',
+              'parameters': {'type': 'object', 'properties': {'host': {'type': 'string'}, 'port': {'type': 'integer'}},
+                             'required': []}}}]
+    MSGS = [{'role': 'user', 'content': 'entra no servidor 192.168.0.30'},
+            {'role': 'assistant', 'content': '', 'tool_calls': [{'type': 'function', 'function': {
+                'name': 'minecraft_conectar', 'arguments': {'host': '192.168.0.30', 'port': 25565}}}]},
+            {'role': 'tool', 'name': 'minecraft_conectar', 'content': '[CONEXÃO MINECRAFT VERIFICADA]'},
+            {'role': 'assistant', 'content': 'Entrei.'}]
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            from transformers import AutoTokenizer
+            cls.tok = AutoTokenizer.from_pretrained(str(cls.MODELO), local_files_only=True)
+        except Exception as exc:  # noqa: BLE001
+            raise unittest.SkipTest(f'modelo de chat indisponível: {exc}')
+        from laboratorio import formato_treino
+        cls.f = formato_treino
+
+    def alvo(self, ids, labels):
+        return self.tok.decode([i for i, l in zip(ids, labels) if l != -100])
+
+    def test_chamada_e_resposta_sao_alvo_e_o_resto_fica_mascarado(self):
+        ids, labels = self.f.tokenize(self.tok, self.MSGS, 'Sou Lilith.', self.TOOLS)
+        alvo = self.alvo(ids, labels)
+        self.assertIn('<tool_call>', alvo)
+        self.assertIn('<function=minecraft_conectar>', alvo)
+        self.assertIn('Entrei.', alvo)
+        for fora in ('entra no servidor', 'CONEXÃO MINECRAFT VERIFICADA', 'Sou Lilith', '# Tools'):
+            self.assertNotIn(fora, alvo)
+        self.assertLessEqual(len(ids), self.f.MAX_FERRAMENTA)
+
+    def test_so_a_ultima_rodada_vira_alvo(self):
+        msgs = [{'role': 'user', 'content': 'oi'}, {'role': 'assistant', 'content': 'Oi!'}] + self.MSGS
+        alvo = self.alvo(*self.f.tokenize(self.tok, msgs, None, self.TOOLS))
+        self.assertNotIn('Oi!', alvo)
+        self.assertIn('<function=minecraft_conectar>', alvo)
+
+    def test_recusa_ferramenta_nao_oferecida_papel_estranho_e_sem_chamada(self):
+        outra = [dict(self.MSGS[0]), {'role': 'assistant', 'content': '', 'tool_calls': [
+            {'type': 'function', 'function': {'name': 'apagar_tudo', 'arguments': {}}}]}] + self.MSGS[2:]
+        self.assertIsNone(self.f.tokenize(self.tok, outra, None, self.TOOLS))
+        self.assertIsNone(self.f.tokenize(self.tok, [{'role': 'system', 'content': 'x'}] + self.MSGS, None, self.TOOLS))
+        self.assertIsNone(self.f.tokenize(self.tok, [self.MSGS[0], {'role': 'assistant', 'content': 'Entrei.'}],
+                                          None, self.TOOLS))
+
+    def test_texto_continua_igual(self):
+        msgs = [{'role': 'user', 'content': 'oi'}, {'role': 'assistant', 'content': 'Oi!'}]
+        ids, labels = self.f.tokenize(self.tok, msgs, 'Sou Lilith.')
+        self.assertTrue(self.alvo(ids, labels).startswith('Oi!'))
+        self.assertIsNone(self.f.tokenize(self.tok, [{'role': 'user', 'content': 'x' * 3000},
+                                                     {'role': 'assistant', 'content': 'Oi!'}]))  # > 256
+
+
+class MontagemFerramenta(unittest.TestCase):
+    def test_contexto_vira_prefixo_e_distracoes_reprodutiveis(self):
+        ex = montar('''# aspecto: ferramentas
+# cat: agir
+U: abre o firefox
+S: [ORIGEM] PC2
+F: abrir_aplicativo {"aplicativo": "firefox"}
+R: OK: Firefox aberto.
+H: Abri o Firefox.
+L: O Firefox está aberto.
+''')[0]
+        msgs = banco.para_treino_ferramenta(ex['mensagens'])
+        self.assertEqual(msgs[0], {'role': 'user', 'content': '[ORIGEM] PC2\n\nabre o firefox'})
+        self.assertEqual([m['role'] for m in msgs], ['user', 'assistant', 'tool', 'assistant'])
+        esquemas = {n: {'type': 'function', 'function': {'name': n}} for n in ('abrir_aplicativo', *banco.DISTRACAO)}
+        um = banco.escolher_ferramentas(ex, esquemas)
+        dois = banco.escolher_ferramentas(ex, esquemas)
+        self.assertEqual(um, dois)
+        nomes = [t['function']['name'] for t in um]
+        self.assertIn('abrir_aplicativo', nomes)
+        self.assertEqual(len(nomes), 1 + banco.DISTRACOES_POR_EXEMPLO)
+        self.assertIsNone(banco.escolher_ferramentas(ex, {}))  # sem o despachante, não inventa definição

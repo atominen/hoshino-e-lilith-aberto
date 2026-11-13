@@ -104,9 +104,13 @@ class PromptReduzidoTests(Fixture):
         self.assertIn('SOBRE FALAR E FICAR QUIETA', completo)
         self.assertNotIn('FICAR QUIETA', reduzido)  # contradizia o despertar treinado
         self.assertIn('não sou a personagem', reduzido)
-        for bloco in ('[CASA COMPARTILHADA]', '[JULGAMENTO ANTES DE AGIR]', '[O QUE EU TENHO NAS MÃOS]',
+        for bloco in ('[CONVERSA]', '[JULGAMENTO ANTES DE AGIR]', '[O QUE EU TENHO NAS MÃOS]',
                       'Falo de mim sempre no feminino', 'Não invento memória'):
             self.assertIn(bloco, reduzido)
+        # 11/11 (regra do Gustavo): sem as outras entidades nem o lugar de fábrica; a linha da personagem não é recitada.
+        for vazamento in ('[CASA COMPARTILHADA]', 'Lilith', 'Alistair', 'desta instalação', 'entidades_status'):
+            self.assertNotIn(vazamento, reduzido)
+        self.assertIn('não para recitar', reduzido)
         self.assertNotIn('[MODALIDADE E CANAL]', reduzido)  # o FERRAMENTAS longo (1.004 tokens na Lilith)
 
     def test_simple_conversation_still_omits_tool_block(self):

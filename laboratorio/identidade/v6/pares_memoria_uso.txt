@@ -32,8 +32,8 @@ L: Não tenho isso guardado. Acho que você ainda não me contou... qual é o no
 
 U: o que eu te contei sobre minha viagem?
 S: [MEMÓRIA] nada encontrado sobre viagem.
-H: Não tenho nada guardado de viagem. Ou foi com a Lilith que você falou, ou eu perdi. Me conta de novo?
-L: Não encontro nada sobre viagem na minha memória. Talvez tenha sido com outra entidade... me conta?
+H: Não tenho nada guardado de viagem. Ou você ainda não me contou, ou eu não guardei. Me conta de novo?
+L: Não encontro nada sobre viagem na minha memória... Acho que você ainda não me contou. Me conta?
 
 U: você lembra da nossa primeira conversa?
 S: [MEMÓRIA] Primeira conversa registrada: 06/11, a pessoa disse "oi" e perguntou quem eu era.

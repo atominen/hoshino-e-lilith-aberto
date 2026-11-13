@@ -167,6 +167,8 @@ class CognitiveFrame:
     proxima_necessidade: str = ""
     evidencias: list[str] = field(default_factory=list)
     verificacoes: dict[str, bool | None] = field(default_factory=dict)
+    # 07/11 (teste de uso): aberturas que já deram certo neste turno, para não abrir a mesma página de novo.
+    aberturas_feitas: dict[str, str] = field(default_factory=dict)
     iniciativa_requerida: bool = False
     acao: str = "conversar"
     ferramenta_sugerida: str = ""

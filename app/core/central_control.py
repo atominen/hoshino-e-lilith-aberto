@@ -147,6 +147,7 @@ class Control:
         self.overlay_process = None
         self.native_process = None
         self.focus_clients = {}
+        self.focus_active = None  # 07/11 (pedido humano): só a última janela que recebeu foco comanda
         self.entity_cache = (0, None)
         self.password_failures=[]
         self.memory_grants={}
@@ -724,7 +725,7 @@ class Control:
         """
         paths=self.paths(entity);database=paths.memory/'sqlite'/(entity+'.db')
         from core import knowledge_editor as editor
-        from memory.records import card_targets
+        from memory.records import card_targets, default_tier
         search=str(query.get('q','')).strip().casefold();kind=query.get('type','')
         if len(search)>200 or kind not in ('',*editor.KINDS):raise ValueError('Filtro de conhecimento inválido.')
         try:page=int(query.get('page',0))
@@ -771,7 +772,7 @@ class Control:
                 if row.get(key):c['entries'].append(entry(row,'procedures',row[key],'procedimento',label=label))
         tiers=editor.tiers(database)
         for c in cards.values():
-            c['importance']=tiers.get(c['id'],'ferro')
+            c['importance']=tiers.get(c['id'],default_tier(c['id']))
             c['card_revision']=editor.card_revision(c)
         values=sorted(cards.values(),key=lambda c:(-editor.TIERS.index(c['importance']),c['kind'],c['title'].casefold(),c['id']))
         if query.get('id'):values=[c for c in values if c['id']==query['id']]
@@ -1129,6 +1130,88 @@ class Control:
             diagnostics.emit('central.vram_margin_saved', margin_mib=value,
                              previous_mib=int(previous) // MIB_BYTES if isinstance(previous, (int, float)) else None)
         return dict(self.vram_settings(), saved=True)
+
+    def api_settings(self):
+        """APIs de modelo (pedido humano 07/11): cadastro e quem usa qual. A chave nunca volta: só "salva" ou não."""
+        from core import executor_api as ea
+        cadastro = ea.carregar()
+        situacao = ea.situacao()
+        apis = [dict(id=i, nome=a['nome'], provedor=a['provedor'], rotulo=ea.PROVEDORES[a['provedor']]['rotulo'],
+                     situacao=situacao.get(i),
+                     url=a['url'], modelo=ea.modelo_de(a), url_efetiva=ea.url_de(a),
+                     tem_chave=bool(ea.chave_de(i, a['provedor'])),
+                     usada_por=[e for e, x in cadastro['entidades'].items() if x == i])
+                for i, a in sorted(cadastro['apis'].items())]
+        provedores = [dict(id=p, rotulo=c['rotulo'], modelo=c['modelo'], url=c['url']) for p, c in ea.PROVEDORES.items()]
+        return dict(apis=apis, entidades=cadastro['entidades'], provedores=provedores,
+                    revision=revision(ea.ARQUIVO_ESCOLHA), apply='immediate',
+                    aviso='Com uma API escolhida, as conversas e memórias daquela entidade saem deste PC. Se a API '
+                          'falhar ou a cota acabar, a entidade volta sozinha para o modelo local.')
+
+    def save_api(self, data):
+        from core import executor_api as ea
+        acao = data.get('action')
+        permitidos = {'salvar': {'action', 'revision', 'id', 'nome', 'provedor', 'url', 'modelo', 'chave'},
+                      'remover': {'action', 'revision', 'id'},
+                      'atribuir': {'action', 'revision', 'entity', 'id'},
+                      'apagar_chave': {'action', 'revision', 'id'}}
+        if acao not in permitidos or set(data) - permitidos[acao]:
+            raise ValueError('Pedido de API inválido.')
+        with self.lock:
+            if revision(ea.ARQUIVO_ESCOLHA) != data.get('revision'):
+                raise ValueError('As APIs mudaram; recarregue antes de salvar.')
+            cadastro = ea.carregar()
+            ident = data.get('id')
+            if acao == 'salvar':
+                provedor = data.get('provedor')
+                if provedor not in ea.PROVEDORES:
+                    raise ValueError('Provedor inválido.')
+                nome = str(data.get('nome') or '').strip()[:60]
+                modelo = str(data.get('modelo') or '').strip()[:120]
+                url = str(data.get('url') or '').strip()[:300]
+                if not nome:
+                    raise ValueError('Dê um nome para a API.')
+                if url and not re.fullmatch(r'https?://[^\s]+', url):
+                    raise ValueError('Endereço inválido (use http:// ou https://).')
+                if not (url or ea.PROVEDORES[provedor]['url']):
+                    raise ValueError('Para "Outra", informe o endereço (…/v1/chat/completions).')
+                if not (modelo or ea.PROVEDORES[provedor]['modelo']):
+                    raise ValueError('Informe o modelo.')
+                if not ident:
+                    import unicodedata
+                    simples = ''.join(ch for ch in unicodedata.normalize('NFKD', nome.lower()) if not unicodedata.combining(ch))
+                    base = re.sub(r'[^a-z0-9]+', '-', simples).strip('-')[:30] or provedor
+                    ident = base
+                    n = 2
+                    while ident in cadastro['apis']:
+                        ident = f'{base}-{n}'; n += 1
+                elif ident not in cadastro['apis']:
+                    raise ValueError('API não encontrada.')
+                cadastro['apis'][ident] = dict(nome=nome, provedor=provedor, url=url, modelo=modelo)
+                chave = data.get('chave')
+                if isinstance(chave, str) and chave.strip():
+                    ea.guardar_chave(ident, chave.strip())
+            elif acao == 'remover':
+                if ident not in cadastro['apis']:
+                    raise ValueError('API não encontrada.')
+                del cadastro['apis'][ident]
+                cadastro['entidades'] = {e: (None if x == ident else x) for e, x in cadastro['entidades'].items()}
+                ea.guardar_chave(ident, None)
+            elif acao == 'apagar_chave':
+                if ident not in cadastro['apis']:
+                    raise ValueError('API não encontrada.')
+                ea.guardar_chave(ident, None)
+            else:
+                entidade = data.get('entity')
+                if entidade not in ea.ENTIDADES:
+                    raise ValueError('Entidade inválida.')
+                if ident is not None and ident not in cadastro['apis']:
+                    raise ValueError('API não encontrada.')
+                cadastro['entidades'][entidade] = ident
+            ea.gravar(cadastro)
+            diagnostics.emit('central.api_saved', action=acao, api=ident, entity=data.get('entity'),
+                             key_changed=bool(acao == 'salvar' and str(data.get('chave') or '').strip()))
+        return dict(self.api_settings(), saved=True)
 
     def system(self):
         memory={}
@@ -1500,7 +1583,22 @@ class Control:
                 if closed:self.focus_clients.pop(closed)
                 else:raise ValueError('Limite de abas excedido.')
             self.focus_clients[identifier]=dict(focused=data['focused'] and not data.get('closed'),at=time.time(),closed=data.get('closed',False),client=data.get('client','browser'))
-            return dict(recorded=True)
+            if self.focus_clients[identifier]['focused']:self.focus_active=identifier
+            elif data.get('closed') and self.focus_active==identifier:self.focus_active=None
+            return dict(recorded=True,active=self.window_may_command(identifier))
+
+    def window_may_command(self,client):
+        """Duas janelas (PC1 e PC2) não comandam ao mesmo tempo: vale a última que recebeu foco (07/11).
+
+        Sem identificação (painel web ou cliente antigo) não há como saber; passa. Janela ativa fechada ou sumida
+        (sem sinal há 30 s) libera a vez para a próxima que comandar."""
+        if not client:return True
+        with self.lock:
+            self.focus_state()
+            ativa=self.focus_active
+            if ativa is None or ativa not in self.focus_clients or self.focus_clients[ativa].get('closed'):
+                self.focus_active=client;return True
+            return ativa==client
 
     def start_overlay(self):
         import subprocess

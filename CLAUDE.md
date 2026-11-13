@@ -8,6 +8,42 @@ perceber coisas básicas": conferir antes de afirmar, perguntar na dúvida, a co
 
 ## Estado e escopo mais recentes
 
+- **12/11 · treino da noite, agir de verdade e Minecraft livre ([detalhes](docs/ACAO_ANUNCIADA_E_MINECRAFT_20261112.md)):**
+  - **Treino 12/11 (v6):** Hoshino 8/8 e Lilith 8/8 nos contratos (verificador corrigido); Alistair retomado do passo
+    648 parou no 850 (validação piorou; o melhor foi o 550, ainda não avaliado). A Lilith usa o candidato v6.
+  - **Causa de "vou conectar" sem chamar nada:** os pesos treinados (v5 e v6) não chamavam ferramenta (0/5; o 9B
+    original 5/5): o banco só treinava texto. **TREINO:** o treinador e o banco agora ensinam a chamada
+    (`laboratorio/formato_treino.py`, aspecto "agir", contrato `tool_call`). **CÓDIGO:** cobrança pelo nome da
+    ferramenta e raciocínio em pedido de ação (4/5 sem treino novo).
+  - **Antes de treinar de novo:** medir pela Central (corpus novo, sequências até 768 fichas).
+  - **Minecraft:** modo livre (ela escolhe objetivos conferíveis e segue), chat fora quando está sozinha no servidor,
+    "sem caminho" depois de andar volta medido, ferramentas sem "da Hoshino". Suporte de ações/aviso: Ministral 3B
+    (só na Lilith, `lilith.env`). Tarefa das flechas `ct-b8c47f750b` pausada com efeito incerto preservado.
+  - **Rodadas ao vivo:** 12:49 dois objetivos dela concluídos (picareta de pedra, esqueleto); 14:45 nenhum (objetivo
+    repetido, mochila cheia, registro repetido), corrigidos depois. Tudo parado às 14:56 a pedido humano.
+  - **Sem commit.**
+
+- **11/11 · treino, chat e ponte de áudio ([detalhes](docs/PAINEL_PC2_E_DESKTOP_LEVE_20261106.md#ponte-de-áudio-pela-central-sem-sonobus-pedido-humano-1111)):**
+  - **Treino v6 de 09/11:** o PC desligou às 00:31, com a Hoshino no passo 300/1260. A sessão foi encerrada pela
+    Central e o treino foi reagendado para 12/11, das 00:00 às 12:00 (`b950aeb4ccfe4b4e`, os três do original, banco v6 sem lugar e sem outras entidades).
+  - **Chat da Central:** histórico e caixa de mensagem num painel só, como nos chats comuns.
+  - **Painel do PC2:** atualiza sozinho pelo GitHub ao abrir (`scripts/abrir_painel_pc2.sh`).
+  - **Ponte de áudio:** o som do PC1 vai ao PC2 e o microfone do PC2 vem ao PC1 pela própria Central, no lugar do
+    SonoBus (`app/ui/native_ponte.py`).
+  - **Lugar e outras entidades (regra de 07/11, ampliada):** a Lilith disse "uma das entidades desta instalação".
+    No banco v6, 39 linhas da Hoshino e da Lilith foram reescritas sem lugar e sem outras entidades. O Alistair é
+    exceção. A parte de código foi feita às 22:40: prompt (`[CONVERSA]` no lugar da casa compartilhada, despertar),
+    constituição, self_model, núcleo de ferramentas e título da janela "Central".
+  - **Memória poluída ([detalhes](docs/MEMORIA_LILITH_E_AUXILIAR_2B_20261107.md#1111--rótulos-fixos-e-o-revisor-vendo-tudo-pedido-humano)):**
+    uma frase virou 4 memórias. Agora há rótulos fixos de assunto, e o revisor vê todas as fontes, com o mesmo
+    rótulo sempre comparado. Foram limpas 3 memórias. A medição com o 9B real está pendente.
+  - **Portas de poluição fora do revisor ([detalhes](docs/MEMORIA_LILITH_E_AUXILIAR_2B_20261107.md#1111-noite--portas-de-poluição-fora-do-revisor-e-o-prompt-sem-lugar-pedido-humano)):**
+    - **Reflexão noturna:** não tira mais conclusão sobre pessoas nem lugar que o material não diga.
+    - **Resumos diários:** ignoram o que veio antes do último "apagar tudo", pela marca `memoria_recomeco.json`.
+    - **Anúncio sem ação:** depois da cobrança, ela diz que não fez.
+    - **Limpeza:** 2 reflexões e 24 resumos.
+    - **Sem commit.** A medição com o 9B fica para depois do treino.
+
 - **07/11 · banco de treinamento v6 ([formato e princípios](laboratorio/identidade/v6/README.md)):**
   - **Conteúdo:** "super versão" pedida pelo Gustavo, com o v5 inteiro mais fatos, perceber, consertar, perguntar,
     memória, ferramentas de verdade (`F:`/`R:`), voz, conhecimento geral e pares de preferência com erros reais.
@@ -113,6 +149,11 @@ perceber coisas básicas": conferir antes de afirmar, perguntar na dúvida, a co
 
 ## Propósito e decisões vigentes
 
+- **Treino ou código (Gustavo, 11/11):** separar o que se resolve com treinamento do que se resolve com código.
+  - **Rótulo antes de propor:** cada problema das entidades recebe CÓDIGO, TREINO ou AMBOS, com o motivo.
+  - **CÓDIGO:** decisão, regra, verificação, estado e ferramenta.
+  - **TREINO:** voz, jeito, identidade, costume e formato que o modelo precisa produzir sozinho.
+  - **Prioridade:** o código vem primeiro quando resolve e dá para medir. O banco de treino não gasta exemplos com o que o código já garante.
 - Erro zero não existe num 9B. Prioridade: perceber e consertar o básico, ou seja, conferir antes de afirmar,
   perguntar na dúvida, correção da pessoa guardada e memória revista. Decisões que o modelo faz mal (saber se sabe,
   decidir se confere) ficam no código; medir antes e depois com o modelo real.

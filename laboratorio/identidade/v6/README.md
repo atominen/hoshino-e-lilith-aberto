@@ -10,7 +10,31 @@ bem aqui:
 - usar a memória sem inventar e usar ferramenta de verdade;
 - falar bem por voz, sem perder o conhecimento geral.
 
-Status: **rascunho escrito pelo Claude, aguardando aprovação humana.** Nada é treinado sem pedido.
+Status: **corpus do laboratório desde 08/11** (pedido humano: "a gente só precisa treinar o 9b"). Candidatos só entram
+em uso depois do teste humano na aba Modelos.
+
+## 12/11 — agir de verdade (pedido humano: "atualize o banco de treinamento")
+
+Os pesos treinados no v5 e no v6 pararam de chamar ferramenta: pedida a entrada no Minecraft, a Lilith escreveu
+"Vou conectar agora" por 10 passos sem chamar nada (0 de 5; o 9B original, 5 de 5). Causa: o banco só treinava
+texto, porque o treinador recusava os papéis `tool` e `tool_calls`. Medição e relatório:
+[`docs/ACAO_ANUNCIADA_E_MINECRAFT_20261112.md`](../../../docs/ACAO_ANUNCIADA_E_MINECRAFT_20261112.md).
+
+- **Formato novo no treino:** `laboratorio/formato_treino.py`, o mesmo no montador e no treinador. O exemplo com
+  ferramenta é montado pelo modelo de chat do Qwen3.5, o mesmo que o Ollama usa na inferência. As definições reais das
+  ferramentas usadas vão no system, com duas de distração. São alvo as chamadas (`<tool_call>…`) e a resposta final
+  da última rodada; pessoa, system e resultado da ferramenta ficam mascarados. Teto: 768 fichas (texto: 256).
+- **Aspecto "agir"** (`pares_agir.txt`, 25 situações, e 4 diálogos do Alistair): pedido de ação → a chamada já na
+  primeira fala; Minecraft (entrar, coletar, fabricar, andar, chat, sair), PC (abrir, focar, pasta, site, lembrete,
+  silêncio, PC2, tela), várias ações num pedido e a resposta depois da cobrança "NADA ACONTECEU". As frases reais
+  de 12/11 ("Vou conectar agora…", "A conexão já foi feita") são as respostas ruins (`N`). Dois casos sem dado
+  suficiente (sem endereço, sem horário) ensinam a perguntar em vez de chamar.
+- **Prova separada:** 3 casos novos em `holdout_hl_v6.txt`; contrato `tool_call` na avaliação do laboratório
+  (`identity-contracts-v3`).
+- **Números (12/11):** com ferramenta no treino: Hoshino 89, Lilith 89, Alistair 20. Ficam fora 3 que citam outra
+  entidade (regra de 07/11) e 2 com `add_goal`, cuja definição sozinha passa do teto.
+- **Antes de treinar:** o corpus mudou (impressão digital nova) e as sequências agora chegam a 768 fichas. É preciso
+  medir de novo pela Central (smoke e treino curto de cada entidade) antes de agendar a noite.
 
 ## Princípios, tirados da pesquisa
 
@@ -73,10 +97,10 @@ S: [CANAL] voz                              ← contexto do turno (canal, hora, 
   - Cada exemplo tem entidade, aspecto, categoria, arquivo e linha, formato, mensagens, resposta ruim, tokens
     contados com o tokenizador do Qwen3.5, se cabe no treino atual e status.
 - **`laboratorio-local/pacote_identidade_v6/`**:
-  - `<entidade>_train|validation|holdout.jsonl`: o que o treinador atual aceita (só texto pessoa/entidade, até 256
-    tokens; o contexto `S` vai como prefixo da fala da pessoa);
-  - `<entidade>_completo.jsonl`: com papéis `system`/`tool` e `tool_calls`, para quando o treinador aceitar
-    ferramenta;
+  - `<entidade>_train|validation|holdout.jsonl`: o que o treinador usa. Texto pessoa/entidade até 256 fichas e, desde
+    12/11, exemplos com ferramenta (`messages` com `tool_calls`/`tool` e `tools` com as definições) até 768; o
+    contexto `S` vai como prefixo da fala da pessoa;
+  - `<entidade>_completo.jsonl`: tudo, com papéis `system`/`tool` e `tool_calls`;
   - `<entidade>_preferencias.jsonl`: pares `chosen`/`rejected` para DPO/ORPO;
   - `RELATORIO.md` e `MANIFESTO_V6.json`: contagens por aspecto, entidade e formato, mais hashes.
 
@@ -97,9 +121,9 @@ Acrescenta:
 
 ## Treinar com o v6
 
-Não está ligado. `laboratorio/corpus_atual.py` continua no v5 até a aprovação humana. Depois de aprovar:
-1. **SFT com `*_train.jsonl`** (o que o treinador já aceita).
-2. **Estender o treinador** para `*_completo.jsonl`, com papéis `tool`/`system` e sequências maiores que 256 tokens.
+Ligado desde 08/11 (`laboratorio/corpus_atual.py`). Passos:
+1. **SFT com `*_train.jsonl`**: texto e, desde 12/11, ferramenta.
+2. ~~Estender o treinador para ferramenta~~: feito em 12/11 (`laboratorio/formato_treino.py`).
 3. **DPO/ORPO com `*_preferencias.jsonl`.**
 4. **Prova antes e depois:** a avaliação de fatos de 07/11 (`compartilhado/runtime/ensaios/fatos-20261107/`) e a
    auditoria de identidade.

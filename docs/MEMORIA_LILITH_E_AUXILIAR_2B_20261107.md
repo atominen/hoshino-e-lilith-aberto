@@ -216,3 +216,98 @@ Medido com o `llama-server` do Ollama. Para ver a placa, o executável precisa d
 A GPU ajudando só acelera a leitura da entrada (5 a 6 vezes); a escrita continua a ~31 tok/s, como na CPU.
 
 **Fica só na CPU:** o trabalho é de fundo, ninguém espera por ele. O modo B economiza de 2 a 6 s, mas custa ~300 MiB justamente onde a VRAM é apertada (Lilith 33 camadas + 32K) e disputa a placa com o 9B. O modo C não cabe junto com o 9B.
+
+## 11/11 · Rótulos fixos e o revisor vendo tudo (pedido humano)
+
+**Teste de uso, 21:17.** A frase "eu sou o gustavo rosa nunes, o responsável pela sua existência individual nessa
+instalação privada" virou 4 memórias:
+- **Regra:** gravou duas, o nome (certo) e o papel, este com o enfeite fixo "nesta instalação — foi quem me montou
+  e me roda".
+- **Escriba-modelo:** propôs mais duas, uma repetida e outra com "funcionamento aqui dentro". O revisor aprovou as
+  duas como "nova".
+- **Por quê:** o revisor só via anotações antigas do próprio escriba (`FONTES_REVISAVEIS`), por semelhança de
+  palavras. As da regra, gravadas segundos antes no mesmo turno, ficavam invisíveis.
+
+**Rótulo: CÓDIGO** (regra treino ou código, 11/11). O que mudou:
+- **Rótulos fixos** (`app/memory/rotulos.py`):
+  - **Lista fechada:** nome, papel, família, lugar, trabalho, saúde, rotina, gosto, projeto, máquina, combinado,
+    eu, mundo e outro.
+  - **Quem decide:** o código, pela chave da regra e por palavras-chave, não o modelo.
+  - **Onde fica:** na coluna nova `memories.rotulo`. As linhas antigas sem rótulo são rotuladas na hora da
+    comparação.
+- **Mesmo rótulo é comparado sempre:** `knowledge_store.semelhantes` traz anotações de todas as fontes, primeiro as
+  do mesmo rótulo (mesmo sem palavras em comum) e depois as parecidas. Os rótulos amplos (eu, mundo, outro) não
+  puxam comparação sozinhos.
+- **Protegidas:** o que veio da pessoa ou de regra o revisor vê, mas não substitui.
+  - **"igual":** não grava (`ja_guardada`).
+  - **"atualiza":** grava a nova e mantém a antiga (`atualiza_protegida`). Só a correção da própria pessoa muda o
+    que ela disse.
+- **Lugar que ninguém disse:** uma anotação com "aqui dentro", "nesta máquina", "neste computador" ou "nesta
+  instalação" só se sustenta se o lugar estiver no texto da base. Se estiver só na fala dela, vai para a
+  conferência. Se não estiver em lugar nenhum, não entra. "nessa/nesta" contam como o mesmo lugar.
+- **Regra do criador:** passou a dizer só "Esta pessoa se declara responsável por eu existir."
+- **Diagnóstico:** o `memory.review` traz `comparadas` (rótulo, fonte e se é do mesmo rótulo).
+
+**Limpeza:** 3 memórias desativadas, com backup e motivos em
+`entidades/lilith/runtime/memory-backups/limpeza-20261111-213005/`. Ficou o nome. O papel de criador continua na
+ficha da pessoa.
+
+**Testes:** `testes/test_revisor_memoria.py` com 28 testes (6 novos, incluindo a reprodução do incidente). Fatos 28,
+integração 44 e geral 127, todos passando.
+
+**Pendente:** medir com o 9B real na avaliação de `ensaios/revisor-memoria-20261107`. A GPU está no treino da noite
+de 11 para 12/11.
+
+## 11/11 noite · Portas de poluição fora do revisor e o prompt sem lugar (pedido humano)
+
+**Teste de uso, 21:53–22:04**, depois de apagar a memória. A tabela `memories` ficou limpa: o revisor barrou 5
+anotações inventadas, como "Gustavo me disse que estava difícil de me desenvolver". As respostas estranhas e a
+poluição vieram de outras portas.
+
+Todas com rótulo CÓDIGO:
+
+**Reflexão noturna** (`mind/night_reflection.py`):
+- **O que aconteceu:** ela guardou "Gustavo prefere ser chamado por nome completo" (ninguém disse) e "nesta
+  instalação", sem revisão.
+- **O que mudou:** a reflexão não tira mais conclusão sobre pessoas. O bloco saiu do prompt, e
+  `filtrar()` descarta `pessoas` e qualquer lugar ("aqui dentro", "nesta máquina") que o material não diga. O que se
+  sabe de uma pessoa entra só pelo escriba e pelo revisor, com o trecho dito.
+
+**Resumos diários** (`mind/daily_summary.py`):
+- **O que aconteceu:** o "apagar tudo" da Central preserva os recibos de ação (auditoria), e o resumo refez 24
+  resumos de 06 e 07/11 ("Hoje eu li o LEIA-ME.md…").
+- **O que mudou:** os resumos ignoram dias e registros de antes do último recomeço (`inicio_da_memoria()`). Esse
+  momento vem da marca `runtime/memoria_recomeco.json`, que o apagamento passa a gravar (`core/memory_maintenance`),
+  ou, na falta dela, do manifesto do último backup completo.
+
+**Prompt e identidade** (Hoshino e Lilith; o Alistair, mordomo, é exceção). Regra de 07/11 ampliada: nenhuma sabe de
+fábrica das outras, do estado delas nem de onde está.
+- **`[CASA COMPARTILHADA]`:** virou `[CONVERSA]`, sem nomes e sem ferramentas `entidades_*`.
+- **Despertar:** não lista mais lembretes nem outras entidades, e "o que não encontrei não é notícia".
+- **Linha "não sou a personagem":** marcada como "não para recitar". Ela tinha recitado a linha inteira.
+- **Outros textos do prompt:** saíram "cuida desta instalação", "outra entidade" e "Alistair pode atender".
+- **Arquivos de identidade:** constituição, self_model e `lilith_personality.md` ficaram sem "desta instalação",
+  "neste computador", "nesta máquina" e "Hoshino". As versões anteriores estão em
+  `identity/versions/*_antes_lugar_20261111.*`.
+- **Ferramentas:** `entidades_status` e `recursos_status` saíram do núcleo oferecido sempre. Continuam quando a
+  pessoa fala de entidades ou de recursos.
+- **Janela:** o título e o nome do aplicativo viraram "Central". O título chegava a elas como app aberto.
+
+**Anúncio sem ação** (`main.py` e `core/conferencia.py`):
+- **O que aconteceu:** ela foi cobrada uma vez e anunciou de novo ("Vou conferir as janelas do PC2."), e esse texto
+  ia para a pessoa.
+- **O que mudou:** há uma segunda chance sem ferramentas (`PEDIDO_HONESTO`), em que ela diz com as próprias palavras
+  que não fez. Se ainda assim anunciar, vai `FALLBACK_HONESTO`. Diagnósticos: `announced_again_after_recovery` e
+  `announced_again_honest_reply`.
+- **Parte de TREINO:** o treinador ainda não ensina chamada de ferramenta.
+
+**Limpeza:** 2 reflexões desativadas e 24 resumos apagados, com backup e motivos em
+`entidades/lilith/runtime/memory-backups/limpeza-20261111-223519/`.
+
+**Testes:** passam reflexão 40, limpeza 7, fatos 28, revisor 28, prompt treinado 12, prontidão 164, capacidade 20,
+integração 44, geral 127, controle da Central 74 e os demais da área. Na Central, 41/42 (a falha é o `chromadb`,
+que já existia). O prompt real da Lilith e o do despertar foram conferidos sem nenhum vazamento.
+
+**Pendente:**
+- **Medição com o 9B real:** o revisor (rótulos) e a segunda chance honesta, depois do treino.
+- **Gênero:** "Obrigado" e "chamada" são TREINO e estão no banco desta noite.

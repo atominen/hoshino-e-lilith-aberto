@@ -55,10 +55,10 @@ def _detectar(entidade: str, modelo_carregado: str) -> dict:
         from laboratorio import corpus_atual
     except ImportError:
         return {}
-    if dataset != corpus_atual.dataset_id(entidade):
+    corpo, _, dono = dataset.partition(':')
+    if corpo not in getattr(corpus_atual, 'CORPOS_DE_IDENTIDADE', (corpus_atual.CORPUS,)) or dono != entidade:
         return {}
-    return dict(corpus=corpus_atual.CORPUS, treino=job.get('id'), versao=selecionada.get('kind'),
-                alias=modelo_carregado)
+    return dict(corpus=corpo, treino=job.get('id'), versao=selecionada.get('kind'), alias=modelo_carregado)
 
 
 def identidade_nos_pesos() -> dict:

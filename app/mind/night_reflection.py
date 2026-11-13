@@ -167,7 +167,7 @@ def preparar_material(max_chars: int = None, *, agora=None) -> dict:
     eps = bd.consultar(
         "SELECT id, created_at, what_happened, action_taken, result, is_success, source, context FROM episodes "
         "WHERE project_epoch(created_at) >= ? AND project_epoch(created_at) < ? "
-        "AND (source NOT IN ('initiative_checkpoint','initiative_observation') OR source IS NULL) "
+        "AND (source NOT IN ('initiative_checkpoint','initiative_observation','tool_receipt') OR source IS NULL) "
         "AND project_epoch(created_at) <= ? ORDER BY project_epoch(created_at), id LIMIT 161", limites, strict=True)
 
     def contexto(ep):
@@ -288,12 +288,12 @@ quero entender o que mudou em mim e no meu modo de agir.
 MATERIAL DO DIA:
 {material}
 
-Faça uma análise em 5 blocos, somente com informações sustentadas pelo material:
-1. O que aprendi sobre a pessoa e as pessoas ao meu redor.
-2. O que aprendi sobre mim mesma: decisões boas, erros, padrões e contradições.
-3. O que aprendi sobre meu ambiente, ferramentas e capacidades.
-4. O que ficou pendente, incerto ou exige outra estratégia.
-5. O que vale tentar diferente no próximo período.
+Faça uma análise em 4 blocos, somente com informações sustentadas pelo material:
+1. O que aprendi sobre mim mesma: decisões boas, erros, padrões e contradições.
+2. O que aprendi sobre meu ambiente, ferramentas e capacidades.
+3. O que ficou pendente, incerto ou exige outra estratégia.
+4. O que vale tentar diferente no próximo período.
+O que sei das pessoas fica com a memória de conversa, que guarda o que elas disseram; aqui não tiro conclusão sobre pessoas.
 
 Escreva de 1 a 2 conclusões úteis por bloco. Não invente fatos. Diferencie uma
 observação de uma hipótese: se não dá para saber, escreva que é hipótese.
@@ -302,7 +302,6 @@ no histórico, nem referência fornecida em comprovação de cada conclusão.
 Evite frases genéricas. Cada conclusão precisa poder mudar uma decisão futura.
 
 Formato estrito:
-[APRENDI_SOBRE_PESSOAS] texto
 [APRENDI_SOBRE_MIM] texto
 [APRENDI_SOBRE_AMBIENTE] texto
 [PENDENCIAS] texto
@@ -395,6 +394,24 @@ def recuperar_salvas(agora) -> int:
     """Reconcilia SQLite antes de gerar de novo após falha/crash do marcador JSON."""
     with bd.conexao() as conn:
         return _lote_salvo(conn, agora)
+
+
+def filtrar(linhas: list[tuple[str, str]], material: str = "") -> list[tuple[str, str]]:
+    """11/11 (teste de uso, "memória meio poluída"): a reflexão escreveu "Gustavo prefere ser chamado por nome completo"
+    (ninguém disse) e "responsável pela minha existência nesta instalação". O que se sabe de uma pessoa entra pelo
+    escriba e pelo revisor de memória, com o trecho que ela disse; a reflexão não guarda conclusão sobre pessoas.
+    E nenhuma conclusão afirma onde eu estou ("aqui dentro", "nesta instalação") se o material não diz."""
+    from mind import revisor_memoria
+    no_material = revisor_memoria.lugares_de(material or "")
+    ficam, fora = [], []
+    for tema, texto in linhas:
+        if tema == "pessoas" or not revisor_memoria.lugares_de(texto) <= no_material:
+            fora.append(tema)
+        else:
+            ficam.append((tema, texto))
+    if fora:
+        diagnostics.emit('night_reflection.conclusions_skipped', temas=fora, motivo='pessoa_ou_lugar_sem_base')
+    return ficam
 
 
 def salvar(reflexoes: list[tuple[str, str]], motivo: str = "noturna", *, evidencias=None, agora=None) -> int:

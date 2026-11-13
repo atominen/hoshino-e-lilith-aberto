@@ -444,7 +444,9 @@ def test_workspace_normaliza_desktop_absoluto_para_desktop_real():
                home / "Area de Trabalho" / "HOSHINO_V30" / "registro.txt"]
     for alias in aliases:
         got = filesystem.resolver_caminho(str(alias))
-        assert got.parents[1].name in {"Desktop", "Área de Trabalho"}
+        assert got.parents[1] == filesystem._desktop_dir()
+
+
 
 def test_workspace_tira_caminho_conhecido_do_estado_da_tarefa():
     home = Path.home()

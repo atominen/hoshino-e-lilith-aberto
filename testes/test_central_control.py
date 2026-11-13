@@ -963,6 +963,56 @@ class CentralControlTests(unittest.TestCase):
         self.control.focus(dict(client_id='focus-fixture',focused=False,closed=True));self.control.focus(dict(client_id='focus-other',focused=False,closed=True))
         self.assertEqual(self.control.focus_state()['basis'],'explicit_pagehide');self.assertFalse(self.control.focus_state()['focused'])
 
+    def test_apis_de_modelo_adicionar_alterar_remover_e_quem_usa_qual(self):
+        # 07/11 (pedido humano): cadastro de APIs na Central; a chave nunca volta para a tela.
+        from core import executor_api as ea
+        arquivo, chaves = self.root / 'compartilhado/config/executor_api.json', self.root / 'compartilhado/config/chaves.env'
+        with patch.object(ea, 'ARQUIVO_ESCOLHA', arquivo), patch.object(ea, 'ARQUIVO_CHAVE', chaves):
+            c = self.control
+            estado = c.api_settings()
+            self.assertEqual((estado['apis'], estado['entidades']['lilith']), ([], None))
+            self.assertIn('gemini', [p['id'] for p in estado['provedores']])
+            estado = c.save_api(dict(action='salvar', revision=estado['revision'], nome='Gemini grátis', provedor='gemini',
+                                     url='', modelo='', chave='SEGREDO-123'))
+            api, = estado['apis']
+            self.assertEqual((api['id'], api['modelo'], api['tem_chave']), ('gemini-gratis', 'gemini-flash-latest', True))
+            self.assertNotIn('SEGREDO-123', json.dumps(estado))  # nunca devolve a chave
+            self.assertIn('SEGREDO-123', chaves.read_text())
+            estado = c.save_api(dict(action='atribuir', revision=estado['revision'], entity='lilith', id='gemini-gratis'))
+            self.assertEqual(estado['entidades']['lilith'], 'gemini-gratis')
+            self.assertEqual(ea.escolha('lilith')['id'], 'gemini-gratis')
+            estado = c.save_api(dict(action='salvar', revision=estado['revision'], id='gemini-gratis', nome='Gemini',
+                                     provedor='gemini', url='', modelo='gemini-2.5-pro'))  # sem chave: mantém
+            self.assertEqual((estado['apis'][0]['modelo'], estado['apis'][0]['tem_chave']), ('gemini-2.5-pro', True))
+            for ruim in (dict(action='salvar', nome='x', provedor='inventado'), dict(action='salvar', nome='', provedor='gemini'),
+                         dict(action='salvar', nome='x', provedor='personalizado'),  # sem endereço
+                         dict(action='atribuir', entity='lilith', id='nao-existe'), dict(action='apagar', id='x'),
+                         dict(action='salvar', nome='x', provedor='gemini', url='ftp://x')):
+                with self.subTest(ruim=ruim), self.assertRaises(ValueError):
+                    c.save_api(dict(ruim, revision=estado['revision']))
+            with self.assertRaises(ValueError):  # revisão velha: alguém mudou antes
+                c.save_api(dict(action='remover', revision='velha', id='gemini-gratis'))
+            estado = c.save_api(dict(action='apagar_chave', revision=estado['revision'], id='gemini-gratis'))
+            self.assertFalse(estado['apis'][0]['tem_chave'])
+            estado = c.save_api(dict(action='remover', revision=estado['revision'], id='gemini-gratis'))
+            self.assertEqual((estado['apis'], estado['entidades']['lilith']), ([], None))  # quem usava volta ao local
+
+    def test_so_a_ultima_janela_que_recebeu_foco_comanda(self):
+        # 07/11 (pedido humano): Central do PC1 e painel do PC2 não comandam juntos.
+        c=self.control
+        self.assertTrue(c.window_may_command(''))  # cliente sem identificação (web/antigo): passa
+        self.assertTrue(c.focus(dict(client_id='native-pc1-aaaa',focused=True,client='native'))['active'])
+        self.assertFalse(c.window_may_command('native-pc2-bbbb'))
+        self.assertFalse(c.focus(dict(client_id='native-pc2-bbbb',focused=False,client='native'))['active'])
+        self.assertTrue(c.focus(dict(client_id='native-pc2-bbbb',focused=True,client='native'))['active'])  # PC2 em foco
+        self.assertFalse(c.window_may_command('native-pc1-aaaa'))
+        # perder o foco (usar outro app no PC2) não devolve a vez ao PC1: vale a ÚLTIMA que recebeu foco
+        self.assertTrue(c.focus(dict(client_id='native-pc2-bbbb',focused=False,client='native'))['active'])
+        self.assertFalse(c.focus(dict(client_id='native-pc1-aaaa',focused=False,client='native'))['active'])
+        # janela ativa fechada libera a vez
+        c.focus(dict(client_id='native-pc2-bbbb',focused=False,closed=True,client='native'))
+        self.assertTrue(c.window_may_command('native-pc1-aaaa'))
+
     def test_overlay_disabled_never_starts_process(self):
         with patch('subprocess.Popen',side_effect=AssertionError('should not launch')):
             with self.assertRaises(ValueError):self.control.start_overlay()

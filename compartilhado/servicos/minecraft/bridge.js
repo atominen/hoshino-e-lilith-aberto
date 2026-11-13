@@ -407,6 +407,11 @@ function state() {
         return [slot,item?{name:item.name,count:item.count}:null]
       })) : null,
     nearbyEntities: trackedEntities(48, 32),  // pedido humano 28/10: visão maior; 30/10: + mais próximo de cada espécie
+    // 12/11 (humano: "qual o sentido dela perguntar no chat se não tem ninguém para responder?"): quem mais está no
+    // servidor agora, a qualquer distância (lista de jogadores do servidor), sem ela mesma.
+    onlinePlayers: Object.keys(bot.players || {}).filter(name => name !== bot.username).sort(),
+    // 12/11: mochila cheia travava a coleta ("inventário cheio (36 pilhas)") e ela ia procurar o bloco em outro lugar.
+    freeSlots: typeof bot.inventory?.emptySlotCount === 'function' ? bot.inventory.emptySlotCount() : null,
     recentChat: recentChat.map(message => ({ ...message })),
     lastDeath: lastDeath ? { ...lastDeath } : null,
     reflexes: reflexes.map(entry => ({ ...entry })),
@@ -821,6 +826,16 @@ async function gotoPoint(args) {
         const here = vecToJSON(b.entity.position.floored())
         return `O caminho até ${x}, ${y}, ${z} é longo demais para decidir de uma vez; andei de ${from} até ` +
           `${here.x}, ${here.y}, ${here.z}. Continue daqui ou escolha um ponto intermediário. Estado: ${JSON.stringify(state())}`
+      }
+      // 12/11: o pathfinder andou um trecho e depois deu NoPath (de -170,42,-135 a -169,42,-133). Virava HTTP 400,
+      // recibo incerto e a tarefa parava inteira. Como no tempo esgotado: devolve o trecho medido e o estado; não
+      // afirma "sem efeito" (o pathfinder pode ter cavado ou posto bloco) e a decisão seguinte vê a posição real.
+      if (err?.name === 'NoPath' && from && cell(b.entity?.position) !== from) {
+        const here = vecToJSON(b.entity.position.floored())
+        setEvent('action', `sem caminho até ${x}, ${y}, ${z}; parei em ${here.x}, ${here.y}, ${here.z}`)
+        return `Não achei caminho até ${x}, ${y}, ${z}; andei de ${from} até ${here.x}, ${here.y}, ${here.z} e parei. ` +
+          `Repetir o mesmo destino tende a dar no mesmo: escolha um ponto mais próximo, abra passagem ou faça o que ` +
+          `precisa daqui. Estado: ${JSON.stringify(state())}`
       }
       if (PATH_FAILURES.includes(err?.name) && from && cell(b.entity?.position) === from)
         throw new NoEffectError(`nenhum caminho até (${x}, ${y}, ${z}) dentro do limite de busca; você não saiu do lugar. `+

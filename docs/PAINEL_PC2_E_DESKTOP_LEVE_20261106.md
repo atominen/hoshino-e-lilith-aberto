@@ -26,7 +26,14 @@ O script faz o seguinte:
 - grava o endereço com o código em `compartilhado/runtime/launcher/central.url` (0600);
 - confere a conexão (HTTP 200) antes de criar o atalho "Central Hoshino e Lilith (PC2)" no menu.
 
-Para atualizar, rode o mesmo comando de novo.
+**Atualização automática (11/11, pedido humano):** o atalho abre `scripts/abrir_painel_pc2.sh`, que antes de
+abrir a janela busca o `main` no GitHub (até 20 s) e avança só se for avanço rápido. O código novo do PC1 chega ao
+PC2 depois do push. Sem rede, sem credencial (não pede senha) ou com alteração local no caminho, abre a
+versão que já está lá. Cada abertura fica anotada em `compartilhado/runtime/launcher/atualizacao-painel.log`.
+O instalador só precisa rodar de novo se o IP ou o código do PC1 mudarem.
+
+PC2 instalado antes de 11/11, com o atalho antigo que abria a janela direto: uma vez,
+`git -C ~/hoshino-e-lilith-painel pull --ff-only && bash ~/hoshino-e-lilith-painel/scripts/abrir_painel_pc2.sh --instalar-atalho`.
 
 **Segurança:**
 - **Credencial:** o código é diferente do token local. É fixo entre aberturas e trocado em "Gerar novo código".
@@ -47,6 +54,32 @@ Para atualizar, rode o mesmo comando de novo.
 - O botão do Laboratório abre o servidor localmente no PC2, sem efeito útil.
 - Chat, voz (tocada no PC2), modelos, recursos, memórias e alertas funcionam.
 
+### Ponte de áudio pela Central, sem SonoBus (pedido humano, 11/11)
+
+"Não quero depender de apps externos para o projeto funcionar." A ponte que o SonoBus fazia (servidor
+`aoo.sonobus.net`, reconexão manual dos dois lados) passou para a própria Central, pela mesma porta da rede e com o
+mesmo código do painel. Só usa `parec`/`pacat` dos dois PCs. Código em `app/ui/native_ponte.py`.
+
+- **Som do PC1 → PC2:** a Central do PC1 grava o monitor da saída padrão (`@DEFAULT_MONITOR@`, tudo o que toca
+  no PC1) e manda por um GET contínuo (`/api/control/pc2/som`). O painel do PC2 toca na saída padrão de lá.
+- **Microfone do PC2 → PC1:** o painel grava o microfone padrão do PC2 e manda por um POST contínuo chunked
+  (`/api/control/pc2/microfone`). A Central do PC1 toca em `voz_do_pc2`, cujo monitor é o microfone padrão do
+  PC1. As saídas virtuais `pc1_para_pc2`/`voz_do_pc2` do PipeWire continuam (separadas, sem eco).
+- **Formato:** PCM s16le 48 kHz, 2 canais no som e 1 no microfone, sem compressão (~1,5 e ~0,8 Mbit/s).
+- **Atraso:** quem recebe lê a rede sem parar e descarta o excesso acima de 150 ms na fila (volta a 40 ms), em vez
+  de acumular atraso pela diferença de relógio das placas. Tocador com 60 ms e cano de 4 KiB.
+- **Liga sozinho:** com o painel do PC2 aberto. No PC2, em Configurações → "Este PC é o PC2", duas opções ligadas
+  por padrão: "Tocar aqui o som do PC1" e "Mandar o microfone deste PC para o PC1", com a situação ao lado.
+  Reconecta sozinho a cada 2 s (15 s se o PC1 recusar). Uma conexão de cada tipo por vez; a nova substitui a velha.
+- **No PC1:** Configurações → "Painel no PC2 pela rede local" mostra se o PC2 está ouvindo e se o microfone chega.
+- **SonoBus:** com a ponte nova, fechar o SonoBus nos dois PCs (e tirar do início automático), senão o som chega
+  em dobro.
+- **Voz das entidades:** se "Ler novas respostas em voz" estiver ligado nas duas janelas, o PC2 ouve a voz duas
+  vezes (a do painel e a do PC1 pela ponte). Deixar ligado só numa.
+- **Medido no PC1 (11/11):** `parec` do monitor padrão entrega 576.000 bytes em 3 s (exato) mesmo em silêncio,
+  pausa máxima de 31 ms; `pacat` toca em `voz_do_pc2` sem erro. Testes: `testes/test_ponte_audio.py` (HTTP real
+  em loopback, gravador e tocador falsos) e o contrato da interface em `testes/native_central_contracts.py`.
+
 ### O PC2 como corpo das entidades (pedido humano, 06/11 noite)
 
 O painel do PC2 passou a ser também os sentidos e as mãos das entidades lá. O cérebro continua no PC1.
@@ -55,7 +88,8 @@ Nada disso roda no painel do PC1. As rotas `control/pc2/*` só aceitam a porta d
 - **Microfone:**
   - o botão de falar do painel grava com `parec` no PC2 e manda o áudio ao PC1 para transcrever;
   - o atalho global de teclado não funciona no PC2, porque depende do ambiente Python do projeto;
-  - pela ponte do SonoBus, a voz do PC2 também chega ao PC1 como microfone padrão ("Voz do PC2").
+  - pela ponte de áudio da Central (abaixo; antes era o SonoBus), a voz do PC2 também chega ao PC1 como
+    microfone padrão ("Voz do PC2").
 - **Sentidos:**
   - a cada 10 s o painel roda `app/tools/sensors.py` no PC2 (janela ativa, apps abertos, mídia, tempo sem
     teclado e mouse, carga) e manda ao PC1;

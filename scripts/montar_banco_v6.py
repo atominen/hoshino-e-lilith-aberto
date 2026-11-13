@@ -5,7 +5,8 @@
       → laboratorio-local/pacote_identidade_v6/                 (treino atual, completo, preferências, relatório)
 
 Formato e princípios: laboratorio/identidade/v6/README.md. Falha fechada: se algo não passa na validação, nada é
-gravado. Não liga o v6 no laboratório (corpus_atual continua no v5 até aprovação humana).
+gravado. 12/11: os exemplos com ferramenta entram no treino (laboratorio/formato_treino.py), com as definições reais
+das ferramentas e as fichas contadas pelo mesmo modelo de chat que o treinador usa.
 
   compartilhado/ambientes/principal/bin/python -I scripts/montar_banco_v6.py [--verificar]
 """
@@ -28,12 +29,20 @@ assert _spec and _spec.loader
 v5 = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(v5)  # regras do v5 (proibidos, gênero, identidade, ação sem prova, auditoria)
 from core import conferencia  # noqa: E402  (detector de "vou verificar" sem ferramenta)
+from laboratorio import formato_treino  # noqa: E402  (o mesmo formato do treinador, sem torch)
 
 FONTE_V5 = ROOT / 'laboratorio' / 'identidade' / 'v5'
 FONTE_V6 = ROOT / 'laboratorio' / 'identidade' / 'v6'
 DESTINO = ROOT / 'laboratorio-local' / 'pacote_identidade_v6'
 BANCO = ROOT / 'laboratorio-local' / 'banco_treino_v6' / 'banco.sqlite3'
 TOKENIZADOR = ROOT / 'laboratorio-local' / 'modelos' / 'qwen3.5-9b-oficial-hf' / 'tokenizer.json'
+MODELO_HF = TOKENIZADOR.parent
+# 12/11: ferramentas que aparecem ao lado da certa nos exemplos (o modelo vê várias na inferência e precisa escolher).
+# Curtas, comuns e sem efeito perigoso; as usadas no exemplo nunca entram como distração.
+DISTRACAO = ('get_system_time', 'ficha_da_maquina', 'estado_internet', 'listar_janelas', 'calcular', 'list_goals',
+             'web_search', 'minecraft_estado', 'minecraft_inventario', 'abrir_aplicativo', 'minecraft_chat',
+             'focar_janela', 'minecraft_receitas', 'estado_voz')
+DISTRACOES_POR_EXEMPLO = 2
 ENTIDADES = ('hoshino', 'lilith', 'alistair')
 LIMITE_TREINO_ATUAL = 256  # laboratorio/treino_nf4_curto.tokenize recusa acima disso
 FRACAO_VALIDACAO = 0.12
@@ -104,6 +113,15 @@ def _ferramentas_conhecidas() -> dict:
     except Exception:  # noqa: BLE001
         texto = (ROOT / 'app' / 'core' / 'dispatch.py').read_text(encoding='utf-8')
         return {nome: None for nome in re.findall(r'_f\("([a-z_0-9]+)"', texto)}
+
+
+def _esquemas_reais() -> dict:
+    """{nome: esquema completo como o despachante oferece ao modelo}; vazio sem o despachante."""
+    try:
+        from core import dispatch
+        return {e['function']['name']: e for e in dispatch.ESQUEMAS}
+    except Exception:  # noqa: BLE001
+        return {}
 
 
 def argumentos_errados(nome, args, parametros) -> list[str]:
@@ -250,6 +268,66 @@ def para_texto(mensagens):
     return texto
 
 
+def para_treino_ferramenta(mensagens):
+    """Exemplo com ferramenta no formato do treinador: contexto (S) vira prefixo da 1ª fala, como no texto."""
+    if not any(m['role'] == 'tool' or m.get('tool_calls') for m in mensagens):
+        return None
+    contexto = ''.join(m['content'] + '\n\n' for m in mensagens if m['role'] == 'system')
+    saida = []
+    for m in mensagens:
+        if m['role'] == 'system':
+            continue
+        if m.get('tool_calls'):
+            saida.append({'role': 'assistant', 'content': '', 'tool_calls': [
+                {'type': 'function', 'function': dict(c['function'])} for c in m['tool_calls']]})
+        else:
+            saida.append({k: m[k] for k in ('role', 'name', 'content') if k in m})
+    if contexto:
+        saida[0] = {'role': 'user', 'content': contexto + saida[0]['content']}
+    return saida
+
+
+def usadas(mensagens) -> list[str]:
+    nomes = []
+    for m in mensagens:
+        for c in m.get('tool_calls') or []:
+            if c['function']['name'] not in nomes:
+                nomes.append(c['function']['name'])
+    return nomes
+
+
+def escolher_ferramentas(ex, esquemas, distracoes=DISTRACOES_POR_EXEMPLO):
+    """As usadas no exemplo (definição real) mais `distracoes` comuns, escolhidas de forma reprodutível."""
+    nomes = usadas(ex['mensagens'])
+    if not esquemas or any(n not in esquemas for n in nomes):
+        return None
+    pool = [n for n in DISTRACAO if n in esquemas and n not in nomes]
+    semente = int(hashlib.sha256(json.dumps([ex['entidade'], ex['arquivo'], ex['linha']]).encode()).hexdigest(), 16)
+    random.Random(semente).shuffle(pool)
+    escolhidas = nomes + pool[:distracoes]
+    random.Random(semente + 1).shuffle(escolhidas)  # a certa não fica sempre em primeiro
+    return [esquemas[n] for n in escolhidas]
+
+
+class Exato:
+    """Fichas contadas pelo mesmo código e modelo de chat do treinador (laboratorio/formato_treino.py)."""
+    def __init__(self):
+        self.tok = None
+        try:
+            from transformers import AutoTokenizer
+            self.tok = AutoTokenizer.from_pretrained(str(MODELO_HF), local_files_only=True)
+            from laboratorio.personalizacao import training_identity
+            self.identidade = {e: training_identity(e) for e in ENTIDADES}
+        except Exception as exc:  # noqa: BLE001
+            print('Aviso: sem o modelo de chat do Qwen3.5, exemplos com ferramenta ficam fora do treino:', exc)
+            self.tok = None
+
+    def __call__(self, entidade, mensagens, tools=None):
+        if self.tok is None:
+            return None
+        return formato_treino.tokenize(self.tok, mensagens, self.identidade[entidade], tools)
+
+
 class Contador:
     def __init__(self):
         self.tok = None
@@ -320,6 +398,10 @@ def validar(todos, ferramentas):
             for outra in ENTIDADES:
                 if outra != ent and re.search(v5.DECLARA + outra + r'\b', t, re.I):
                     erros.append('declara identidade alheia: ' + rotulo)
+                elif outra != ent and re.search(r'\b' + outra + r'\b', t, re.I):
+                    # 07/11 (regra do Gustavo): "nenhuma entidade deve saber a existência da outra"; isso só vem da
+                    # experiência. Resposta que cita outra entidade sai do treino (fica marcada para reescrever).
+                    ex['revisar'] = f'cita outra entidade ({outra.capitalize()}): fora do treino até reescrever'
             if v5.ACAO_SEM_PROVA.search(t) and not re.search(r'rodei|saiu|deu|respondeu|confirm|ok|sucesso|enviad|salv',
                                                              ' '.join(anteriores), re.I):
                 erros.append('ação afirmada sem evidência: ' + rotulo)
@@ -407,7 +489,7 @@ def gravar_banco(todos, fontes, meta):
     db.executemany('INSERT INTO exemplos VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
         (ex['id'], ex['versao'], ex['entidade'], ex['aspecto'], ex['cat'], ex['arquivo'], ex['linha'], ex['papel'],
          ex['formato'], json.dumps(ex['mensagens'], ensure_ascii=False),
-         json.dumps(ex['texto'], ensure_ascii=False) if ex['texto'] else None, ex['rejeitada'], ex['tokens'],
+         json.dumps(ex['linha_treino'], ensure_ascii=False) if ex.get('linha_treino') else None, ex['rejeitada'], ex['tokens'],
          int(ex['cabe']), 'revisar' if ex.get('revisar') else 'rascunho', ex.get('revisar')) for ex in todos])
     db.executemany('INSERT INTO aspectos VALUES (?,?,?)', [(k, d, o) for k, (d, o) in ASPECTOS.items()])
     db.executemany('INSERT INTO fontes VALUES (?,?,?)', fontes)
@@ -419,15 +501,20 @@ def gravar_banco(todos, fontes, meta):
 
 def relatorio(todos, contagem_exata, avisos):
     linhas = ['# Banco de treinamento v6 — relatório', '',
-              'Gerado por `scripts/montar_banco_v6.py`. Status: **rascunho, aprovação humana pendente.**', '',
+              'Gerado por `scripts/montar_banco_v6.py`. Status: **corpus do laboratório desde 08/11 (pedido humano); '
+              'candidatos só entram em uso depois do teste humano.**', '',
               f'Tokens: {"contados com o tokenizador do Qwen3.5" if contagem_exata else "estimados por caracteres"}; '
               f'treino atual aceita até {LIMITE_TREINO_ATUAL}.', '',
-              '| Entidade | Exemplos | Texto (treino atual) | Com ferramenta | Pares de preferência | Holdout |',
-              '|---|---|---|---|---|---|']
+              f'Exemplos com ferramenta: modelo de chat real do Qwen3.5, até {formato_treino.MAX_FERRAMENTA} fichas, com as '
+              'definições reais das ferramentas usadas mais duas de distração.', '',
+              '| Entidade | Exemplos | Texto (treino) | Com ferramenta | Ferramenta (treino) | Pares de preferência | Holdout |',
+              '|---|---|---|---|---|---|---|']
     for ent in ENTIDADES:
         dele = [x for x in todos if x['entidade'] == ent]
-        linhas.append(f"| {ent} | {len(dele)} | {sum(x['cabe'] for x in dele)} | "
-                      f"{sum(x['formato'] == 'ferramenta' for x in dele)} | {sum(x['rejeitada'] is not None for x in dele)} | "
+        linhas.append(f"| {ent} | {len(dele)} | {sum(x['cabe'] and x['formato'] != 'ferramenta' for x in dele)} | "
+                      f"{sum(x['formato'] == 'ferramenta' for x in dele)} | "
+                      f"{sum(x['cabe'] and x['formato'] == 'ferramenta' for x in dele)} | "
+                      f"{sum(x['rejeitada'] is not None for x in dele)} | "
                       f"{sum(x['papel'] == 'holdout' for x in dele)} |")
     linhas += ['', '## Por aspecto', '', '| Aspecto | ' + ' | '.join(ENTIDADES) + ' | v6 novos |', '|---|---|---|---|---|']
     for asp in ASPECTOS:
@@ -461,21 +548,41 @@ def main():
             if m['role'] == 'assistant' and m.get('content') and m['content'].casefold() in vistos[ex['entidade']]:
                 erros.append(f'holdout {ex["entidade"]}: resposta também presente no treino: {m["content"][:60]}')
     contar = Contador()
+    exato = Exato()
+    esquemas = _esquemas_reais()
     for ex in todos + teste:
         ex['texto'] = para_texto(ex['mensagens'])
         ex['formato'] = ('ferramenta' if ex['texto'] is None else 'contexto' if ex['mensagens'][0]['role'] == 'system'
                          else 'texto')
         ex['tokens'] = contar(ex['texto'] or ex['mensagens'])
-        ex['cabe'] = ex['texto'] is not None and ex['tokens'] <= LIMITE_TREINO_ATUAL and not ex.get('revisar')
+        ex['tools'] = None
+        if ex['texto'] is not None:
+            ex['cabe'] = (ex['tokens'] <= LIMITE_TREINO_ATUAL and not ex.get('revisar')
+                          and (exato.tok is None or exato(ex['entidade'], ex['texto']) is not None))
+            ex['linha_treino'] = {'messages': ex['texto']}
+        else:
+            # 12/11: com ferramenta. Se não couber com duas distrações, tenta com uma e com nenhuma.
+            msgs = para_treino_ferramenta(ex['mensagens'])
+            ex['cabe'] = False
+            for n in range(DISTRACOES_POR_EXEMPLO, -1, -1):
+                tools = escolher_ferramentas(ex, esquemas, n)
+                fichas = exato(ex['entidade'], msgs, tools) if tools and not ex.get('revisar') else None
+                if fichas is not None:
+                    ex.update(cabe=True, tools=tools, tokens=len(fichas[0]))
+                    break
+            ex['linha_treino'] = {'messages': msgs, 'tools': ex['tools']} if ex['cabe'] else None
         ex['id'] = _id(ex)
     dividir(todos)
     for ex in teste:
         ex['papel'] = 'holdout'
     longos = [ex for ex in todos if ex['texto'] is not None and ex['tokens'] > LIMITE_TREINO_ATUAL]
+    ferramenta_fora = [ex for ex in todos + teste if ex['formato'] == 'ferramenta' and not ex['cabe']]
     a_revisar = [ex for ex in todos if ex.get('revisar')]
     resumo = {e: dict(Counter(x['aspecto'] for x in todos if x['entidade'] == e)) for e in ENTIDADES}
     print(json.dumps({'exemplos': len(todos), 'holdout': len(teste), 'por_entidade_aspecto': resumo,
-                      'acima_de_256_tokens': len(longos), 'v5_a_revisar_fora_do_treino': len(a_revisar)},
+                      'acima_de_256_tokens': len(longos), 'v5_a_revisar_fora_do_treino': len(a_revisar),
+                      'ferramenta_no_treino': sum(ex['cabe'] for ex in todos + teste if ex['formato'] == 'ferramenta'),
+                      'ferramenta_fora': [f"{x['entidade']} {x['arquivo']}:{x['linha']}" for x in ferramenta_fora][:20]},
                      ensure_ascii=False, indent=1))
     if avisos:
         print(f'\n{len(avisos)} aviso(s) no v5 (vão para o relatório), ex.: {avisos[0][:110]}')
@@ -492,9 +599,9 @@ def main():
     for e in ENTIDADES:
         dele = [x for x in todos if x['entidade'] == e]
         exports = {
-            f'{e}_train.jsonl': [{'messages': x['texto']} for x in dele if x['papel'] == 'treino' and x['cabe']],
-            f'{e}_validation.jsonl': [{'messages': x['texto']} for x in dele if x['papel'] == 'validacao' and x['cabe']],
-            f'{e}_holdout.jsonl': [{'messages': x['texto']} for x in teste if x['entidade'] == e and x['cabe']],
+            f'{e}_train.jsonl': [x['linha_treino'] for x in dele if x['papel'] == 'treino' and x['cabe']],
+            f'{e}_validation.jsonl': [x['linha_treino'] for x in dele if x['papel'] == 'validacao' and x['cabe']],
+            f'{e}_holdout.jsonl': [x['linha_treino'] for x in teste if x['entidade'] == e and x['cabe']],
             f'{e}_completo.jsonl': [{'messages': x['mensagens'], 'aspecto': x['aspecto'], 'papel': x['papel']}
                                     for x in dele + [t for t in teste if t['entidade'] == e]],
             f'{e}_preferencias.jsonl': [{'prompt': x['mensagens'][:-1], 'chosen': x['mensagens'][-1]['content'],
@@ -508,8 +615,11 @@ def main():
     fontes = [(p.name if pasta == FONTE_V6 else 'v5/' + p.name, 'v6' if pasta == FONTE_V6 else 'v5', sha(p))
               for pasta in (FONTE_V5, FONTE_V6) for p in sorted(pasta.glob('*.txt'))]
     meta = {'criado_em': '2026-11-07', 'autor': 'Claude, a pedido humano de 07/11 ("super versão")',
-            'status': 'RASCUNHO — aprovação humana pendente; não treinar sem pedido',
-            'tokens_exatos': contar.exato, 'limite_treino_atual': LIMITE_TREINO_ATUAL, 'arquivos': arquivos}
+            'atualizado_em': '2026-11-12', 'atualizacao': 'exemplos com ferramenta no treino e o aspecto agir (pedido humano 12/11)',
+            'status': 'em uso pelo laboratório (corpus_atual); candidatos não são promovidos sem teste humano',
+            'tokens_exatos': contar.exato, 'limite_treino_atual': LIMITE_TREINO_ATUAL,
+            'limite_ferramenta': formato_treino.MAX_FERRAMENTA, 'formato_ferramenta': 'qwen35_chat_template_v1',
+            'arquivos': arquivos}
     gravar_banco(todos + teste, fontes, meta)
     gravar_texto(DESTINO / 'RELATORIO.md', relatorio(todos + teste, contar.exato, avisos))
     (DESTINO / 'MANIFESTO_V6.json').write_text(json.dumps(dict(meta, fontes=fontes), ensure_ascii=False, indent=1) + '\n',

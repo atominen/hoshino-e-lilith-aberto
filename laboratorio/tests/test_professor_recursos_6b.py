@@ -40,14 +40,14 @@ class SixBTests(unittest.TestCase):
         self.assertEqual(BY_ID['yi15-6b']['repo'],'01-ai/Yi-1.5-6B-Chat')
     def test_alistair_corpus_not_crossed(self):
         with tempfile.TemporaryDirectory() as temp:
-            home=Path(temp);d=home/'pacote_identidade_v5';d.mkdir(exist_ok=True)
+            home=Path(temp);d=home/'pacote_identidade_v6';d.mkdir(exist_ok=True)
             (d/'alistair_train.jsonl').write_text('{"messages":[]}\n');(d/'alistair_validation.jsonl').write_text('{"messages":[]}\n')
             names={x['id'] for x in allowed_data(home)}
-            self.assertIn('pacote_identidade_v5:alistair',names)
+            self.assertIn('pacote_identidade_v6:alistair',names)
             import laboratorio.candidatos as ca
             with patch.object(ca,'validate_local',return_value=True):
                 p=dict(model='yi15-6b',operation='cycle_30m',minutes=30,
-                       dataset='pacote_identidade_v5:alistair',entity='alistair')
+                       dataset='pacote_identidade_v6:alistair',entity='alistair')
                 self.assertEqual(clean_params(p,home)['entity'],'alistair')
                 p['entity']='hoshino'
                 with self.assertRaises(ValueError):clean_params(p,home)

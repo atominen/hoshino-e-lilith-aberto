@@ -58,6 +58,32 @@ class Regras(unittest.TestCase):
         self.assertEqual(base('South Korean manhwa written by Jung Ji-Hoon', 'The Boxer é um manhwa de Jung Ji-Hoon',
                               pessoa='o que é the boxer', fala='É de Jung Ji-Hoon.', fontes=fontes), 'fonte')
 
+    def test_fala_de_chat_sem_acento_e_abreviada_sustenta_o_que_a_pessoa_disse(self):
+        # Teste de uso 07/11: "e voce ta dando bastante trabalho" → o 9B copiou corrigido e virou "sem_apoio".
+        base = lambda citacao: rv.apurar_base(dict(citacao=citacao), dict(conteudo='Gustavo diz que dou bastante trabalho'),
+                                              pessoa='e voce ta dando bastante trabalho', fala='Obrigada por dizer...')
+        for citacao in ('você está dando bastante trabalho', 'voce ta dando bastante trabalho',
+                        'Você tá dando bastante trabalho.'):
+            with self.subTest(citacao=citacao):
+                self.assertEqual(base(citacao), 'pessoa')
+        self.assertEqual(base('você é muito organizada'), 'nenhuma')  # o que ela não disse continua sem apoio
+
+    def test_trecho_vazio_vale_quando_a_anotacao_usa_as_palavras_da_pessoa_e_as_falas_recentes(self):
+        # Teste de uso 07/11 23:33: o 9B devolveu citacao "" para o que o Gustavo tinha pedido de fato.
+        base = lambda conteudo, pessoa, antes='': rv.apurar_base(dict(citacao=''), dict(conteudo=conteudo), pessoa=pessoa,
+                                                                fala='Vou abrir no PC2 um vídeo do YouTube sobre a RTX 4070 Ti Super.',
+                                                                pessoa_antes=antes)
+        antes = 'voce pode abrir um video de teste da rtx 4070 ti super para min'
+        self.assertEqual(base('Gustavo quer ver um vídeo no YouTube sobre a RTX 4070 Ti Super.', 'no youtube um video',
+                              antes), 'pessoa')  # "RTX 4070" veio da fala anterior dele, não da entidade
+        self.assertEqual(base('Gustavo quer ver um vídeo no YouTube sobre a RTX 4070 Ti Super.', 'no youtube um video'),
+                         'entidade')  # sem a fala anterior, os detalhes só aparecem na fala dela
+        for lixo, pessoa in (('Ele disse o nome dele', 'voce sabe que eu sou?'),
+                             ('Lilith vai abrir o vídeo no PC2 e perguntar o título.', 'no youtube um video'),
+                             ('Quero guardar como ele se chama', 'voce sabe que eu sou?')):
+            with self.subTest(lixo=lixo):
+                self.assertEqual(base(lixo, pessoa, antes), 'nenhuma')
+
     def test_resgate_depois_de_conferir_so_com_todos_os_nomes_e_numeros(self):
         conferencia = [('ficha_da_maquina', {}, 'Placa de vídeo: Radeon RX 6650 XT (VRAM 8.0 GiB); RAM 31.2 GiB')]
         conversa = dict(pessoa='minha placa aguenta?', fala='Sua RX 6650 XT de 8 GB aguenta.', conferencia=conferencia)
@@ -222,12 +248,17 @@ class Banco(unittest.TestCase):
             vinculo = c.execute("SELECT supersedes FROM memories WHERE content='A pessoa mora em Natal'").fetchone()[0]
         self.assertEqual(json.loads(vinculo), ['mem-escriba'])
 
-    def test_semelhantes_so_do_escriba_ativas_sem_marcar_acesso(self):
+    def test_semelhantes_de_todas_as_fontes_diz_quem_pode_ser_substituida_sem_marcar_acesso(self):
+        # 11/11: a regra também aparece (antes só o escriba), marcada como não substituível.
         self.inserir('mem-1', 'A pessoa mora em Recife com a família', 'escriba_llm')
         self.inserir('mem-2', 'A pessoa mora em Recife', 'escriba_regra')
         self.inserir('mem-3', 'A pessoa gosta de café', 'escriba_llm')
         achadas = saber.semelhantes('A pessoa mora em Natal com a família')
-        self.assertEqual([a['id'] for a in achadas], ['mem-1'])
+        self.assertEqual([a['id'] for a in achadas], ['mem-1', 'mem-2'])
+        self.assertEqual([a['substituivel'] for a in achadas], [True, False])
+        self.assertEqual({a['rotulo'] for a in achadas}, {'pessoa_lugar'})
+        self.assertEqual([a['id'] for a in saber.semelhantes('A pessoa mora em Natal com a família',
+                                                             fontes=('escriba_llm',))], ['mem-1'])
         with closing(sqlite3.connect(config.DB_PATH)) as c:
             self.assertEqual(c.execute("SELECT COALESCE(access_count,0) FROM memories WHERE id='mem-1'").fetchone()[0], 0)
         self.assertEqual(saber.semelhantes(''), [])
@@ -246,6 +277,161 @@ class Banco(unittest.TestCase):
         with closing(sqlite3.connect(config.DB_PATH)) as c:
             links = json.loads(c.execute("SELECT links FROM memories WHERE content LIKE '%Natal%'").fetchone()[0])
         self.assertEqual(links[0]['revisao'], 'atualiza')
+
+
+class RotulosFixos(unittest.TestCase):
+    """11/11 (pedido humano): rótulo fixo de assunto, decidido pelo código; mesmo rótulo vai sempre ao revisor."""
+
+    def test_rotulo_por_chave_da_regra_e_por_palavras(self):
+        from memory import rotulos
+        casos = [
+            ('A pessoa com quem falo se chama Gustavo Rosa Nunes', 'fato', 'nome_do_usuario', 'pessoa_nome'),
+            ('Esta pessoa se declara responsável por eu existir.', 'relacao', 'origem_lilith', 'pessoa_papel'),
+            ('O usuário gosta de café', 'preferencia', 'gosto:cafe', 'pessoa_gosto'),
+            ('O usuário disse seu nome e assumiu a responsabilidade', 'observacao', '', 'pessoa_nome'),
+            ('Gustavo me contou que é responsável por minha existência', 'relacao', '', 'pessoa_papel'),
+            ('O cachorro da pessoa se chama Bento', 'fato', '', 'pessoa_familia'),
+            ('A pessoa se mudou pra Natal mês passado', 'fato', '', 'pessoa_lugar'),
+            ('A pessoa trabalha como enfermeira', 'fato', '', 'pessoa_trabalho'),
+            ('A pessoa quer que eu dê respostas curtas', 'preferencia', '', 'combinado'),
+            ('O PC da pessoa tem um Ryzen 7 5700X', 'fato', '', 'maquina'),
+            ('A pessoa tem um servidor de Minecraft em casa', 'fato', '', 'pessoa_projeto'),
+            ('Dom Casmurro foi escrito por Machado de Assis', 'fato', '', 'mundo'),
+            ('Eu prefiro conversar à noite', 'interpretacao', '', 'eu'),
+        ]
+        for conteudo, tipo, chave, esperado in casos:
+            with self.subTest(conteudo=conteudo):
+                self.assertEqual(rotulos.rotular(conteudo, tipo, chave), esperado)
+                self.assertTrue(rotulos.valido(esperado))
+
+    def test_protegida_igual_nao_repete_e_atualiza_nao_substitui(self):
+        protegida = [{'id': 'mem-regra', 'conteudo': 'A pessoa com quem falo se chama Gustavo', 'substituivel': False}]
+        lida = dict(citacao='eu sou o gustavo', contradiz=False, duravel=True, relacao='igual', antiga='A', base='pessoa')
+        decisao = rv.decidir(lida, protegida)
+        self.assertEqual((decisao['guardar'], decisao['motivo'], decisao['substitui']), (False, 'ja_guardada', None))
+        decisao = rv.decidir(dict(lida, relacao='atualiza'), protegida)
+        self.assertEqual((decisao['guardar'], decisao['motivo'], decisao['substitui']), (True, 'atualiza_protegida', None))
+        do_escriba = [dict(protegida[0], substituivel=True)]
+        self.assertEqual(rv.decidir(lida, do_escriba)['substitui'], 'mem-regra')
+
+    def test_lugar_que_ninguem_disse_nao_sustenta(self):
+        pessoa = 'eu sou o gustavo rosa nunes o responsavel pela sua existencia individual nessa instalação privada'
+        fala = 'Entendi. Você disse seu nome e que é responsável por mim.'
+        inventado = {'conteudo': 'O usuário disse seu nome e assumiu a responsabilidade sobre o meu funcionamento aqui dentro'}
+        lida = dict(citacao='eu sou o gustavo rosa nunes', contradiz=False, duravel=True, relacao='nova', antiga='')
+        self.assertEqual(rv.apurar_base(lida, inventado, pessoa=pessoa, fala=fala), 'nenhuma')
+        # A pessoa disse "nessa instalação": "nesta instalação" na anotação está sustentado.
+        dito = {'conteudo': 'Gustavo Rosa Nunes é responsável pela minha existência nesta instalação'}
+        self.assertEqual(rv.apurar_base(lida, dito, pessoa=pessoa, fala=fala), 'pessoa')
+        # Só a entidade falou do lugar: vai para a conferência.
+        so_ela = {'conteudo': 'A pessoa conversa comigo aqui dentro'}
+        self.assertEqual(rv.apurar_base(dict(lida, citacao='Você disse seu nome'), so_ela, pessoa=pessoa,
+                                        fala='Você disse seu nome. Aqui dentro é tranquilo.'), 'entidade')
+
+    def test_regra_do_criador_diz_so_o_que_a_pessoa_declarou(self):
+        origem = scribe.origem_entrada({'id': 'usuario'}, 'localhub')
+        achados = scribe.extrair_por_regra('eu sou o gustavo, o responsável pela sua existência', origem=origem)
+        papel = next(a for a in achados if a.get('papel') == 'criador')
+        for enfeite in ('instalação', 'me montou', 'me roda'):
+            self.assertNotIn(enfeite, papel['conteudo'])
+
+
+class RevisaoNuvem(unittest.TestCase):
+    """Achados da revisão de 11/11 sobre os rótulos fixos."""
+
+    @classmethod
+    def setUpClass(cls):
+        init_db.DB_PATH = config.DB_PATH
+        init_db.init_database(verbose=False)
+
+    def setUp(self):
+        with closing(sqlite3.connect(config.DB_PATH)) as c, c:
+            c.execute('DELETE FROM memories')
+        p = patch.object(saber.vetor, 'salvar', return_value=False); p.start(); self.addCleanup(p.stop)
+        p = patch.object(saber.vetor, 'buscar', return_value=[]); p.start(); self.addCleanup(p.stop)
+
+    def guardar(self, conteudo, fonte, sujeito, tipo='preferencia'):
+        return saber.remember(conteudo, tipo=tipo, fonte=fonte, evidencias=[{'autor_id': sujeito, 'sujeito_id': sujeito}])
+
+    def test_so_compara_com_anotacoes_da_mesma_pessoa(self):
+        self.guardar('O usuário gosta de café', 'Ana (ana); escriba', 'ana')
+        self.assertEqual(saber.semelhantes('A pessoa gosta de café', 3, sujeito='bruno'), [])
+        self.assertEqual(len(saber.semelhantes('A pessoa gosta de café', 3, sujeito='ana')), 1)
+
+    def test_parecida_de_outro_rotulo_nao_some_atras_das_do_mesmo_rotulo(self):
+        for texto in ('A pessoa tem uma irmã chamada Rita', 'A pessoa tem um cachorro chamado Bento',
+                      'A pessoa tem um primo em Recife'):
+            self.guardar(texto, 'escriba_llm', 'ana', tipo='fato')
+        self.guardar('A pessoa mora em Natal', 'escriba_llm', 'ana', tipo='fato')
+        achadas = saber.semelhantes('A pessoa mora com o irmão em Natal', 3, tipo='fato', sujeito='ana')
+        self.assertEqual(achadas[0]['conteudo'], 'A pessoa mora em Natal')
+
+    def test_igual_a_protegida_com_detalhe_novo_guarda(self):
+        protegida = [{'id': 'mem-regra', 'conteudo': 'O usuário mora em Natal', 'substituivel': False}]
+        lida = dict(citacao='moro em Natal desde 2020', contradiz=False, duravel=True, relacao='igual', antiga='A',
+                    base='pessoa', conteudo_candidata='A pessoa mora em Natal desde 2020')
+        decisao = rv.decidir(lida, protegida)
+        self.assertEqual((decisao['guardar'], decisao['motivo'], decisao['substitui']), (True, 'igual_com_mais_detalhe', None))
+        self.assertFalse(rv.decidir(dict(lida, conteudo_candidata='A pessoa mora em Natal'), protegida)['guardar'])
+
+    def test_bronze_pode_ser_substituida_pelo_fato_duravel(self):
+        self.guardar('A pessoa disse que acorda cedo', 'lembranca_bronze', 'ana', tipo='evento')
+        achada = saber.semelhantes('A pessoa acorda cedo todo dia', 3, sujeito='ana')[0]
+        self.assertTrue(achada['substituivel'])
+        saber.remember('A pessoa acorda cedo todo dia', tipo='preferencia', fonte='escriba_llm', substituir=[achada['id']])
+        with closing(sqlite3.connect(config.DB_PATH)) as c:
+            self.assertEqual(c.execute('SELECT status FROM memories WHERE id=?', (achada['id'],)).fetchone()[0], 'superseded')
+
+    def test_rotulo_vem_do_texto_atual_mesmo_depois_de_editado(self):
+        self.guardar('A pessoa trabalha como enfermeira', 'escriba_llm', 'ana', tipo='fato')
+        with closing(sqlite3.connect(config.DB_PATH)) as c, c:
+            c.execute("UPDATE memories SET content='A pessoa mora em Natal'")  # edição na Central
+        self.assertEqual(saber.semelhantes('A pessoa estuda medicina', 3, tipo='fato', sujeito='ana'), [])
+        self.assertEqual(saber.semelhantes('A pessoa se mudou pra Recife', 3, tipo='fato', sujeito='ana')[0]['rotulo'],
+                         'pessoa_lugar')
+
+
+class Poluicao(unittest.TestCase):
+    """Reprodução do teste de uso de 11/11 21:17: uma frase virou 4 memórias."""
+
+    @classmethod
+    def setUpClass(cls):
+        init_db.DB_PATH = config.DB_PATH
+        init_db.init_database(verbose=False)
+
+    def setUp(self):
+        with closing(sqlite3.connect(config.DB_PATH)) as c, c:
+            c.execute('DELETE FROM memories')
+        p = patch.object(saber.vetor, 'salvar', return_value=False); p.start(); self.addCleanup(p.stop)
+        p = patch.object(saber.vetor, 'buscar', return_value=[]); p.start(); self.addCleanup(p.stop)
+
+    def test_o_que_a_regra_guardou_no_turno_aparece_ao_revisor_e_tem_rotulo(self):
+        saber.remember('A pessoa com quem falo se chama Gustavo Rosa Nunes', tipo='fato', chave='nome_do_usuario',
+                       fonte='Gustavo Rosa Nunes (usuario); escriba')
+        saber.remember('Gustavo Rosa Nunes se declara responsável por eu existir.', tipo='relacao',
+                       chave='origem_lilith', fonte='Gustavo Rosa Nunes (usuario); escriba')
+        with closing(sqlite3.connect(config.DB_PATH)) as c:
+            self.assertEqual(sorted(r[0] for r in c.execute('SELECT rotulo FROM memories')), ['pessoa_nome', 'pessoa_papel'])
+        # As duas candidatas do escriba-modelo daquela noite:
+        papel = saber.semelhantes('Gustavo Rosa Nunes me contou que se chama Gustavo Rosa Nunes e que é responsável '
+                                  'por minha existência nesta instalação privada.', 3, tipo='relacao')
+        self.assertEqual(papel[0]['rotulo'], 'pessoa_papel');self.assertTrue(papel[0]['mesmo_rotulo'])
+        self.assertFalse(papel[0]['substituivel'])
+        self.assertIn('pessoa_nome', {a['rotulo'] for a in papel})  # o nome também aparece (palavras em comum)
+        nome = saber.semelhantes('O usuário disse seu nome e assumiu a responsabilidade sobre o meu funcionamento '
+                                 'aqui dentro; isso é importante registrar.', 3, tipo='observacao')
+        self.assertEqual(nome[0]['rotulo'], 'pessoa_nome');self.assertTrue(nome[0]['mesmo_rotulo'])
+
+    def test_banco_antigo_sem_coluna_ganha_rotulo(self):
+        with closing(sqlite3.connect(config.DB_PATH)) as c, c:
+            colunas = {r[1] for r in c.execute('PRAGMA table_info(memories)')}
+        self.assertIn('rotulo', colunas)
+        # Linha antiga sem rótulo: calculado na hora da comparação.
+        with closing(sqlite3.connect(config.DB_PATH)) as c, c:
+            c.execute("INSERT INTO memories(id,type,content,created_at,source,confidence,status) VALUES "
+                      "('mem-velha','fato','A pessoa trabalha como enfermeira','2026-11-06T10:00:00','escriba_llm',.6,'active')")
+        achada = saber.semelhantes('A pessoa agora estuda medicina', 3, tipo='fato')
+        self.assertEqual([(a['id'], a['rotulo'], a['mesmo_rotulo']) for a in achada], [('mem-velha', 'pessoa_trabalho', True)])
 
 
 class Chamada(unittest.IsolatedAsyncioTestCase):

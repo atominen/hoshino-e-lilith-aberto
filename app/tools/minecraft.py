@@ -40,8 +40,14 @@ def _ponte_compativel() -> tuple[dict | None, str]:
     """Exige protocolo conhecido antes de qualquer RPC que altere ou leia o jogo."""
     health, erro = _saude_objeto()
     if health is None:
+        # 12/11: a Lilith leu só o erro de conexão e respondeu "o monitoramento não respondeu". O retorno diz o
+        # que a ponte é e quais ferramentas a iniciam; a escolha continua sendo dela.
         return None, "[PONTE MINECRAFT INDISPONÍVEL]\n" + json.dumps(
-            {"erro": erro, "required_protocol": BRIDGE_PROTOCOL_REQUIRED}, ensure_ascii=False)
+            {"erro": erro, "required_protocol": BRIDGE_PROTOCOL_REQUIRED,
+             "o_que_significa": "A ponte Mineflayer (o programa local que liga esta entidade ao jogo) não está "
+                                "rodando; ainda não há conexão com nenhum servidor.",
+             "ferramentas": "minecraft_conectar(host, port) inicia a ponte e conecta; minecraft_iniciar_ponte só "
+                            "inicia a ponte."}, ensure_ascii=False)
     protocolo = health.get("protocol")
     if not isinstance(protocolo, int) or protocolo < BRIDGE_PROTOCOL_REQUIRED:
         return None, "[PONTE MINECRAFT INCOMPATÍVEL]\n" + json.dumps(

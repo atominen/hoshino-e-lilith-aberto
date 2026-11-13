@@ -1456,4 +1456,122 @@ class ReflectiveQuestion(unittest.TestCase):
             after=task_state.carregar_ultimo(key)
             self.assertEqual(after.status,'paused');self.assertEqual([e['texto'] for e in after.etapas],steps)
 
+class FreePlayAndAlone(unittest.TestCase):
+    """12/11: modo livre (ela escolhe objetivos conferíveis) e chat sem ninguém no servidor."""
+    PEDIDO='O servidor de Minecraft está aberto em 10.0.0.200:25565. Pode entrar e jogar por conta própria; o que fazer lá você decide.'
+
+    def test_free_play_is_recognized_only_without_a_verifiable_goal(self):
+        self.assertEqual(agent.free_play(self.PEDIDO),{'host':'10.0.0.200','port':25565,'version':'1.16.5'})
+        self.assertEqual(agent.free_play('entra no minecraft, host 192.168.0.5 porta 25570, e joga sozinha')['port'],25570)
+        self.assertEqual(agent.free_play('abre o minecraft LAN e brinque à vontade'),{'lan':True,'version':'1.16.5'})
+        for texto in ('Minecraft: conecte LilithMC ao servidor já aberto em host 10.0.0.200, porta 25565, versão 1.16.5 '
+                      'e auth offline. Consiga 30 flechas.', 'você gosta de minecraft?', 'pode jogar por conta própria'):
+            with self.subTest(texto=texto):self.assertIsNone(agent.free_play(texto))
+
+    def test_every_free_goal_is_a_verifiable_objective_and_a_task(self):
+        init_db.DB_PATH=config.DB_PATH;init_db.init_database(verbose=False)
+        free=agent.free_play(self.PEDIDO)
+        for i,goal in enumerate(agent.FREE_GOALS):
+            for where in (free,{'lan':True}):
+                text=agent.free_goal_text(where,goal,500,'LilithMC')
+                with self.subTest(goal=goal,where=where):
+                    self.assertTrue(agent.targets(text))
+                    self.assertIsNone(agent.free_play(text))  # objetivo escolhido não volta a ser pedido livre
+            task=task_state.iniciar_ou_continuar(('minecraft-livre','t-test',str(i)),agent.free_goal_text(free,goal,5,'LilithMC'))
+            self.assertIsNotNone(task,goal);self.assertEqual(agent.targets(task.objetivo),agent.targets(agent.free_goal_text(free,goal,5,'LilithMC')))
+        self.assertIn('Consiga 64 flechas.',agent.free_goal_text(free,'flechas',999,'LilithMC'))
+        self.assertIn('Consiga 1 diamantes.',agent.free_goal_text(free,'diamantes',0,'LilithMC'))
+        with self.assertRaises(ValueError):agent.free_goal_text(free,'voar',1,'LilithMC')
+        with self.assertRaises(ValueError):agent.free_goal_text(free,'arco',1,'nome com espaço')
+
+    def test_goals_already_met_by_the_inventory_are_not_offered(self):
+        # 12/11 12:55: escolheu "arco" com um arco na mochila; o objetivo já estava pronto e o modo livre caiu.
+        free=agent.free_play(self.PEDIDO)
+        state=world(username='LilithMC',inventory=[{'name':'bow','count':1},{'name':'arrow','count':1},
+                                                   {'name':'cooked_salmon','count':26},{'name':'iron_ingot','count':12}])
+        self.assertTrue(agent.free_goal_done(free,'arco',None,'LilithMC',state))
+        self.assertTrue(agent.free_goal_done(free,'carnes',20,'LilithMC',state))
+        self.assertFalse(agent.free_goal_done(free,'carnes',30,'LilithMC',state))
+        self.assertFalse(agent.free_goal_done(free,'bancada',None,'LilithMC',state))  # fabricar nunca conta como feito
+        self.assertFalse(agent.free_goal_done(free,'arco',None,'LilithMC',{'connected':False}))
+        menu=agent.free_menu(state,free,'LilithMC')
+        self.assertNotIn('arco',menu);self.assertIn('bancada',menu);self.assertIn('mob',menu)
+        self.assertIn('você já tem 26',menu['carnes']);self.assertIn('você já tem 12',menu['lingotes_ferro'])
+        self.assertEqual(set(agent.free_menu()),set(agent.FREE_GOALS))  # sem estado: a lista inteira
+        cheio=world(username='LilithMC',inventory=[{'name':'arrow','count':64}])
+        self.assertNotIn('flechas',agent.free_menu(cheio,free,'LilithMC'))  # 64 é o teto: nada a acrescentar
+
+    def test_crafting_goal_for_something_she_already_has_is_not_offered(self):
+        # 12/11 14:45: escolheu "picareta de pedra" de novo com uma na mochila; 10 min sem concluir nada.
+        free=agent.free_play(self.PEDIDO)
+        state=world(username='LilithMC',inventory=[{'name':'stone_pickaxe','count':1}],
+                    equipment={'head':{'name':'iron_helmet','count':1}})
+        self.assertTrue(agent.free_goal_owned(free,'picareta_pedra','LilithMC',state))
+        self.assertFalse(agent.free_goal_owned(free,'picareta_ferro','LilithMC',state))
+        self.assertFalse(agent.free_goal_owned(free,'forno','LilithMC',state))  # colocar no mundo continua valendo
+        menu=agent.free_menu(state,free,'LilithMC')
+        self.assertNotIn('picareta_pedra',menu);self.assertIn('picareta_ferro',menu);self.assertIn('kit_ferro',menu)
+
+    def test_full_backpack_offers_dropping_bulk_leftovers(self):
+        from core import minecraft_cognition as cognition
+        cheia=world(username='LilithMC',freeSlots=0,onlinePlayers=[],inventory=[
+            {'name':'cobblestone','count':342},{'name':'gravel','count':43},{'name':'iron_ingot','count':12}])
+        options=cognition.action_options({},cheia)
+        self.assertEqual(options['jogar_fora:cobblestone']['arguments'],{'nome':'cobblestone','quantidade':64})
+        self.assertIn('jogar_fora:gravel',options);self.assertNotIn('jogar_fora:iron_ingot',options)
+        self.assertIn('Mochila cheia',cognition.mochila_cheia_texto(cheia))
+        com_espaco=dict(cheia,freeSlots=9)
+        self.assertFalse(any(k.startswith('jogar_fora:') for k in cognition.action_options({},com_espaco)))
+        self.assertIsNone(cognition.mochila_cheia(world()))  # ponte antiga, sem a informação
+
+    def test_procedure_registration_has_a_cooldown(self):
+        # 12/11: "Picareta de pedra pronta" registrado 4 vezes em 10 minutos.
+        from core import minecraft_cognition as cognition
+        cp={'steps':12,'trajectory':[{'tool':'registrar_procedimento','status':'success','step':10},
+            {'tool':'minecraft_craft','status':'success','step':11,'receipt_id':'r1','inventory_delta':{'birch_planks':4}}]}
+        self.assertEqual(cognition.registration_cooldown(cp),8)
+        self.assertEqual(cognition.recent_achievement(cp),[])
+        cp['steps']=20;self.assertEqual(cognition.registration_cooldown(cp),0)
+        cp2=agent.initial('g',{'inventory':{'bow':1},'equipped':{},'placed':{},'crafted':{}});cp2['session_id']='s1'
+        cp2['target']={'host':'fixture','port':37837,'version':'1.16.5','username':'LilithMC'}
+        cp2['trajectory']=[{'tool':'registrar_procedimento','status':'success','step':0}]
+        events=[]
+        async def ask(state,checkpoint):return {'tool':'registrar_procedimento','arguments':{'nome':'x'}}
+        async def execute(tool,args):events.append(tool);return {'ok':True,'status':'success'}
+        async def observe():return world(username='LilithMC')
+        asyncio.run(agent.run({'inventory':{'bow':1},'equipped':{},'placed':{},'crafted':{}},cp2,ask=ask,execute=execute,
+            observe=observe,persist=lambda s:None,allowed={'registrar_procedimento'},validate=lambda t,a:'',limit=2))
+        self.assertEqual(events,[])
+        self.assertTrue(any('registrou um procedimento há poucos passos' in str(e.get('output')) for e in cp2['events']))
+
+    def test_free_state_is_saved_per_parent_task(self):
+        init_db.DB_PATH=config.DB_PATH;init_db.init_database(verbose=False)
+        self.assertIsNone(agent.load_free('pai-1'))
+        agent.save_free('pai-1',{'version':1,'objetivos':[{'objetivo':'arco','status':'concluido'}]})
+        self.assertEqual(agent.load_free('pai-1')['objetivos'][0]['objetivo'],'arco')
+        self.assertIsNone(agent.load_free('pai-2'))
+        self.assertEqual(agent.free_state_summary({'connected':False})['conectada'],False)
+        resumo=agent.free_state_summary(world(health=18,food=12,inventory=[{'name':'bread','count':3}],onlinePlayers=[]))
+        self.assertEqual(resumo['inventario'],{'bread':3});self.assertEqual(resumo['jogadores_online'],[])
+
+    def test_chat_is_not_offered_or_accepted_when_she_is_alone(self):
+        from core import minecraft_cognition as cognition
+        sozinha=world(username='LilithMC',onlinePlayers=[]);acompanhada=world(username='LilithMC',onlinePlayers=['Bento'])
+        self.assertTrue(cognition.ninguem_online(sozinha));self.assertFalse(cognition.ninguem_online(acompanhada))
+        self.assertFalse(cognition.ninguem_online(world()))  # ponte antiga, sem a lista: não presume
+        self.assertNotIn('falar_no_chat',cognition.action_options({},sozinha))
+        self.assertIn('falar_no_chat',cognition.action_options({},acompanhada))
+        cp=agent.initial('g',{'inventory':{'bow':1},'equipped':{},'placed':{},'crafted':{}});cp['session_id']='s1'
+        cp['target']={'host':'fixture','port':37837,'version':'1.16.5','username':'LilithMC'}
+        events=[]
+        async def ask(state,checkpoint):
+            return {'tool':'minecraft_chat','arguments':{'texto':'onde tem galinha?'}}
+        async def execute(tool,args):
+            events.append(tool);return {'ok':True,'status':'success'}
+        async def observe():return dict(sozinha)
+        result=asyncio.run(agent.run({'inventory':{'bow':1},'equipped':{},'placed':{},'crafted':{}},cp,ask=ask,
+            execute=execute,observe=observe,persist=lambda s:None,allowed={'minecraft_chat'},validate=lambda t,a:'',limit=3))
+        self.assertEqual(events,[])
+        self.assertTrue(any('Só você está no servidor' in str(e.get('output')) for e in cp['events']))
+
 if __name__=='__main__':unittest.main()

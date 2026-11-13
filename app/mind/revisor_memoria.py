@@ -203,9 +203,20 @@ def _normal(texto) -> str:
     return " ".join(re.findall(r"\w+", "".join(c for c in texto if not unicodedata.combining(c))))
 
 
+# 07/11 (teste de uso): a pessoa escreve como fala ("voce ta dando bastante trabalho"); o modelo copia corrigido
+# ("você está dando…") e o trecho não batia, virando "sem_apoio" o que a pessoa disse de fato.
+_FALA_DE_CHAT = {"ta": "esta", "tá": "esta", "to": "estou", "tô": "estou", "tao": "estao", "vc": "voce", "vcs": "voces",
+                 "pra": "para", "pro": "para o", "q": "que", "n": "nao", "tb": "tambem", "tbm": "tambem",
+                 "msm": "mesmo", "eh": "e", "cmg": "comigo", "ctg": "contigo", "obg": "obrigado"}
+
+
+def _falado(texto: str) -> str:
+    return " ".join(_FALA_DE_CHAT.get(p, p) for p in _normal(texto).split())
+
+
 def _cobertura(trecho: str, texto: str) -> float:
-    """Quanto do trecho está no texto (1.0 = copiado; tolera acento, caixa e pontuação)."""
-    trecho, texto = _normal(trecho), _normal(texto)
+    """Quanto do trecho está no texto (1.0 = copiado; tolera acento, caixa, pontuação e abreviação de chat)."""
+    trecho, texto = _falado(trecho), _falado(texto)
     if not trecho or not texto:
         return 0.0
     if trecho in texto:
@@ -215,6 +226,32 @@ def _cobertura(trecho: str, texto: str) -> float:
 
 
 _GENERICOS = {"pessoa", "pc", "pc1", "pc2", "usuario", "usuaria", "lilith", "hoshino", "alistair", "a", "o", "os", "as"}
+
+
+_VAZIAS = {"a", "o", "as", "os", "um", "uma", "uns", "umas", "de", "do", "da", "dos", "das", "em", "no", "na", "nos",
+           "nas", "para", "por", "com", "que", "e", "ou", "se", "me", "te", "eu", "voce", "ele", "ela", "isso", "esse",
+           "essa", "isto", "aqui", "ai", "la", "mais", "muito", "bem", "pode", "poderia", "quero", "queria", "min", "mim",
+           "pra", "ta", "esta", "estou", "nao", "sim", "ola", "oi", "so", "tambem", "ja", "agora", "ver", "the", "and"}
+
+
+_PERGUNTA = re.compile(r"^\s*(?:e\s+)?(?:o\s+que|que|quem|qual|quais|quando|onde|como|por\s*que|porque|quant[oa]s?)\b"
+                      r"|\?\s*$")
+_PEDIDO = re.compile(r"\b(?:pode|poderia|consegue|quer|vamos|bora|abre|abra|coloca|coloque|mostra|mostre)\b")
+
+
+def _nas_palavras_da_pessoa(conteudo: str, pessoa: str) -> bool:
+    """A anotação traz a maior parte das palavras-chave da fala da pessoa (pelo menos duas)?
+
+    Pergunta sobre um assunto não sustenta nada sobre ele ("o que é the boxer" não diz que é sobre uma boxeadora);
+    pedido sustenta que a pessoa pediu."""
+    falado = _falado(pessoa)
+    if _PERGUNTA.search(falado) and not _PEDIDO.search(falado):
+        return False
+    chaves = {p for p in _falado(pessoa).split() if p not in _VAZIAS and (len(p) >= 3 or p.isdigit())}
+    if len(chaves) < 2:
+        return False
+    texto = set(_falado(conteudo).split())
+    return sum(p in texto for p in chaves) / len(chaves) >= 0.6
 
 
 def detalhes(conteudo: str) -> set[str]:
@@ -227,7 +264,21 @@ def detalhes(conteudo: str) -> set[str]:
     return {_normal(d) for d in achados if _normal(d)}
 
 
-def apurar_base(resposta: dict, candidata: dict, *, pessoa: str, fala: str, fontes=None, conferencia=None) -> str:
+_LUGAR = re.compile(r"\baqui dentro\b|\bdentro d[eo]st[ea] (?:computador|pc|maquina|sistema|tela)\b|"
+                    r"\b(?:neste|deste) (?:computador|pc|sistema)\b|\b(?:nesta|desta) (?:maquina|instalacao|casa)\b")
+_DEMONSTRATIVOS = (("nessa ", "nesta "), ("dessa ", "desta "), ("nesse ", "neste "), ("desse ", "deste "))
+
+
+def lugares_de(texto: str) -> set[str]:
+    """Onde ela estaria ("aqui dentro", "nesta máquina", "neste computador"…), normalizado."""
+    texto = _normal(texto)
+    for de, para in _DEMONSTRATIVOS:
+        texto = texto.replace(de, para)
+    return set(_LUGAR.findall(texto))
+
+
+def apurar_base(resposta: dict, candidata: dict, *, pessoa: str, fala: str, fontes=None, conferencia=None,
+                pessoa_antes: str = "") -> str:
     """Quem sustenta a anotação, decidido por este código a partir do trecho que o modelo copiou (07/11: o 9B dizia
     "a pessoa disse" para o que só a entidade tinha dito sobre a pessoa, como "o cachorro se chama Thor").
 
@@ -237,10 +288,22 @@ def apurar_base(resposta: dict, candidata: dict, *, pessoa: str, fala: str, font
       a base vira "entidade"."""
     textos = [("fonte", " ".join(str(t) for _, t in (fontes or []))),
               ("conferencia", " ".join(str(t) for _, _, t in (conferencia or []))),
-              ("pessoa", pessoa or ""), ("entidade", fala or "")]
+              ("pessoa", "\n".join(t for t in (pessoa or "", pessoa_antes or "") if t)), ("entidade", fala or "")]
     citacao = resposta.get("citacao") or ""
     base = next((nome for nome, texto in textos if _cobertura(citacao, texto) >= 0.8), "nenhuma")
+    falas = [pessoa or ""] + [t for t in (pessoa_antes or "").split("\n") if t.strip()]
+    if base == "nenhuma" and not citacao.strip() and any(
+            _nas_palavras_da_pessoa(candidata.get("conteudo") or "", f) for f in falas):
+        # 07/11 (teste de uso): o 9B devolvia trecho vazio para "Gustavo quer ver um vídeo no YouTube…", que era o que
+        # a pessoa tinha pedido. Sem trecho, vale se a anotação usa as palavras-chave da própria fala da pessoa.
+        base = "pessoa"
     achados = detalhes(candidata.get("conteudo") or "")
+    lugares = lugares_de(candidata.get("conteudo") or "")
+    if lugares and base in ("fonte", "conferencia", "pessoa", "entidade"):
+        # 11/11: "assumiu a responsabilidade sobre o meu funcionamento aqui dentro" — ninguém disse "aqui dentro".
+        # Onde ela está não vem de fábrica nem de enfeite: o lugar da anotação tem que estar no texto da base.
+        if not lugares <= lugares_de(dict(textos)[base]):
+            base = "entidade" if lugares <= lugares_de(fala or "") else "nenhuma"
     if base in ("fonte", "conferencia", "pessoa"):
         texto_base = _normal(dict(textos)[base])
         faltam = {d for d in achados if d not in texto_base.split() and d not in texto_base}
@@ -276,8 +339,21 @@ def decidir(resposta: dict | None, antigas: list[dict], *, conferida: bool = Fal
         indice = LETRAS.index(resposta["antiga"]) if resposta["antiga"] in LETRAS else -1
         if 0 <= indice < len(antigas) and antigas[indice].get("id"):
             alvo = antigas[indice]
-            return dict(base, guardar=True, motivo=resposta["relacao"], substitui=alvo["id"],
-                        antiga_conteudo=str(alvo.get("conteudo") or "")[:200])
+            antiga = str(alvo.get("conteudo") or "")[:200]
+            if not alvo.get("substituivel", True):
+                # 11/11: a já guardada veio da pessoa ou de regra. "igual" = já está guardado, não repete (a memória
+                # ficou poluída com 4 anotações de uma frase). "atualiza" grava a nova e a antiga fica: só a própria
+                # pessoa (correção) muda o que ela disse.
+                if resposta["relacao"] == "igual":
+                    # Revisão (11/11): "igual" inclui "com mais detalhe". Só é repetição se a anotação não traz nome nem
+                    # número que as já guardadas mostradas não tenham ("mora em Natal desde 2020" ≠ "mora em Natal").
+                    conhecidos = " ".join(_normal(a.get("conteudo")) for a in antigas)
+                    novos = {d for d in detalhes(resposta.get("conteudo_candidata") or "") if d not in conhecidos}
+                    if not novos:
+                        return dict(base, guardar=False, motivo="ja_guardada", antiga_conteudo=antiga)
+                    return dict(base, guardar=True, motivo="igual_com_mais_detalhe", antiga_conteudo=antiga)
+                return dict(base, guardar=True, motivo="atualiza_protegida", antiga_conteudo=antiga)
+            return dict(base, guardar=True, motivo=resposta["relacao"], substitui=alvo["id"], antiga_conteudo=antiga)
         return dict(base, guardar=True, motivo="nova_sem_alvo")  # disse igual/atualiza sem apontar uma válida
     return dict(base, guardar=True, motivo="nova")
 
@@ -317,7 +393,7 @@ async def conferir(pedido: list[dict], *, nome: str, chamar, executar, ferrament
 
 
 async def revisar(candidata: dict, antigas: list[dict], *, pessoa: str, resposta: str, nome: str, fontes=None,
-                  chamar, executar=None, ferramentas=None) -> tuple[dict | None, dict]:
+                  chamar, executar=None, ferramentas=None, pessoa_antes: str = "") -> tuple[dict | None, dict]:
     """Revisa uma anotação. ``chamar(mensagens, formato=None, ferramentas=None)`` devolve a mensagem do modelo
     (``content``, ``tool_calls``); ``executar(nome, argumentos)`` roda uma ferramenta de leitura. Sem ``executar``
     ou ``ferramentas``, o que só a entidade afirmou não entra (não há como conferir). Devolve (decisão,
@@ -327,8 +403,9 @@ async def revisar(candidata: dict, antigas: list[dict], *, pessoa: str, resposta
     def lida_com_base(mensagem, conferencia=None):
         lida = ler_resposta((mensagem or {}).get("content"))
         if lida is not None:
-            lida["base"] = apurar_base(lida, candidata, pessoa=pessoa, fala=resposta, fontes=fontes,
-                                       conferencia=conferencia)
+            lida["base"] = apurar_base(lida, candidata, pessoa=pessoa, pessoa_antes=pessoa_antes, fala=resposta,
+                                       fontes=fontes, conferencia=conferencia)
+            lida["conteudo_candidata"] = str(candidata.get("conteudo") or "")
         return lida
 
     pedido = mensagens(pessoa, resposta, candidata, antigas, nome=nome, fontes=fontes)

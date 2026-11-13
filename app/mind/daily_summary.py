@@ -49,9 +49,25 @@ def batches(day):
     return out
 
 
+def inicio_da_memoria() -> float | None:
+    """Quando a experiência dela foi apagada por último (epoch), ou None.
+
+    11/11 (teste de uso): depois do "apagar tudo" da Central, os recibos de ação de 06/11 continuaram no histórico
+    (auditoria) e o resumo diário refez 24 resumos daqueles dias ("Hoje eu li o LEIA-ME.md…"). O que veio antes do
+    recomeço não volta como experiência. Só vale a marca que o apagamento grava depois de verificar o sucesso (o
+    manifesto do backup é escrito antes, e uma tentativa abortada não é recomeço)."""
+    from datetime import datetime
+    from core.memory_maintenance import RECOMECO
+    try:
+        return datetime.fromisoformat(json.loads((Path(config.RUNTIME_DIR)/RECOMECO).read_text())['desde']).timestamp()
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 def _sources(day, now):
     start = history.local_datetime(day+'T00:00:00')
-    bounds = (start.timestamp(), (start+timedelta(days=1)).timestamp(), now.timestamp())
+    inicio = inicio_da_memoria()
+    bounds = (max(start.timestamp(), inicio or 0.0), (start+timedelta(days=1)).timestamp(), now.timestamp())
     # A ordem local é estável. ROWID não é uma alegação de ordem causal global.
     stores = [(Path(config.RUNTIME_DIR)/'history.sqlite3', 'messages', 'ts'),
               (Path(config.RUNTIME_DIR)/'history.sqlite3', 'events', 'ts'),
@@ -193,7 +209,10 @@ def next_batch(*, agora=None, max_chars=9000):
             conn.create_function('local_day',1,lambda ts:history.timestamp_details(ts).get('local_date'))
             days.update(r[0] for r in conn.execute(f'SELECT DISTINCT local_day({clock}) FROM {table}')
                         if r[0] and r[0]<=now.date().isoformat())
-    for day in sorted(days):
+    inicio = inicio_da_memoria()
+    from datetime import datetime, timezone
+    primeiro = history.local_datetime(datetime.fromtimestamp(inicio, timezone.utc)).date().isoformat() if inicio else ''
+    for day in sorted(d for d in days if d >= primeiro):
         prepared = prepare(day, agora=now, max_chars=max_chars)
         if prepared['prompt']:
             return prepared

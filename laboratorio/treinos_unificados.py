@@ -437,6 +437,10 @@ def worker(home,project,jid):
             if obj['state']=='cancelled':return
             s=obj['plan'];py=home/'.venv-rocm/bin/python'
             if s['action']=='recover':
+                # 12/11: o worker é um processo novo, sem PYTHONPATH; a recuperação importa `core` (app/).
+                # Sem isto o "Preparar" da Central falhava com "No module named 'core'".
+                for extra in (str(project),str(project/'app')):
+                    if extra not in sys.path:sys.path.insert(0,extra)
                 from .recuperacao_modelos import execute,receipt_path
                 def cancel_recovery(*_):raise KeyboardInterrupt('Recuperação cancelada; sem replay automático')
                 handlers={sig:signal.signal(sig,cancel_recovery) for sig in (signal.SIGTERM,signal.SIGINT)}

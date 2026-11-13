@@ -706,7 +706,7 @@ class NativeContracts(unittest.TestCase):
         w.ui_config={'settings':{'clipboard_auto':False}};clipboard.setText('outra');w.capture_clipboard()
         self.assertEqual(len(sent()),2)
         self.assertTrue(hasattr(w,'clipboard_timer') and w.clipboard_timer.isSingleShot())
-    def test_pc2_panel_points_to_lan_and_closing_keeps_pc1_running(self):
+    def test_pc2_panel_points_to_lan_and_closes_together_with_pc1(self):
         # 06/11 (pedido humano): no PC2 o central.url aponta para o IP privado do PC1.
         self.endpoint_path.write_text('http://10.0.0.102:8770/#codigo-de-pareamento')
         self.assertEqual(ui.endpoint(Path(sys.argv_root)),('http://10.0.0.102:8770','codigo-de-pareamento'))
@@ -715,18 +715,62 @@ class NativeContracts(unittest.TestCase):
             with self.assertRaises(ValueError,msg=bad):ui.endpoint(Path(sys.argv_root))
         w=self.window;self.assertFalse(w.remote_panel())
         w.base='http://10.0.0.102:8770';self.assertTrue(w.remote_panel())
-        with patch.object(ui.QMessageBox,'question',side_effect=AssertionError('não pergunta encerrar o PC1')),\
-             patch.object(w,'finish_window_only') as only:
+        # 07/11 (pedido humano): fechar o PC2 fecha o PC1 também, com a opção de fechar só esta janela.
+        with patch.object(w,'ask_remote_close',return_value='so'),patch.object(w,'finish_window_only') as only:
             w.closeEvent(QCloseEvent())
         only.assert_called_once();self.assertFalse(any(p=='control/shutdown' for p,_,_ in self.requests))
+        with patch.object(w,'ask_remote_close',return_value=None),patch.object(w,'finish_window_only') as only:
+            w.closeEvent(QCloseEvent())
+        only.assert_not_called();self.assertFalse(any(p=='control/shutdown' for p,_,_ in self.requests))
+        with patch.object(w,'ask_remote_close',return_value='tudo'),patch.object(w,'finish_window_only') as only:
+            w.closeEvent(QCloseEvent())
+        self.assertEqual([d for p,d,_ in self.requests if p=='control/shutdown'],[{'confirm':True}])
+        # o PC1 encerrando (estado closing) ou com a porta fechada fecha o PC2 junto
+        w.remote_shutdown_at=None;w.centralWidget().setEnabled(True)
+        with patch.object(w,'close_with_central') as junto:
+            w.track_remote_central({'ok':False,'refused':False});w.track_remote_central({'ok':False,'refused':True})
+            junto.assert_not_called()  # rede lenta ou primeira recusa: espera
+            w.refused_since=time.monotonic()-11;w.track_remote_central({'ok':False,'refused':True})
+            junto.assert_called_once()
+        w.base='http://127.0.0.1:8765'
+        with patch.object(w,'close_with_central') as junto:
+            w.refused_since=time.monotonic()-60;w.track_remote_central({'ok':False,'refused':True})
+            junto.assert_called_once()  # 07/11: fechada pelo PC2, a janela do PC1 fecha junto
+        with patch.object(w,'close_with_central') as junto:
+            w.shutdown_pending=True;w.refused_since=time.monotonic()-60;w.track_remote_central({'ok':False,'refused':True})
+            junto.assert_not_called()  # no próprio encerramento, quem decide é o recibo
+            w.shutdown_pending=False
+        w.base='http://10.0.0.102:8770'
         # A seção de rede só aparece no PC1 (o backend do PC1 recusa a leitura vinda do PC2).
         w.render_lan(None);self.assertTrue(w.lan_box.isHidden())
         w.render_lan(dict(enabled=True,port=8770,addresses=['10.0.0.102'],code='abc123',active=False))
         self.assertFalse(w.lan_box.isHidden());self.assertIn('instalar_painel_pc2.sh 10.0.0.102 abc123',w.lan_info.text())
         self.assertIn('10.0.0.0/24',w.lan_info.text())
+        # 11/11: ponte de áudio pela Central (sem SonoBus): o PC1 mostra quem está ligado.
+        self.assertIn('nenhum painel do PC2 conectado',w.lan_info.text())
+        w.render_lan(dict(enabled=True,port=8770,addresses=['10.0.0.102'],code='abc123',active=True,
+                          ponte_audio={'som':{'cliente':'10.0.0.105','segundos':180},'microfone':{'cliente':'10.0.0.105','segundos':120}}))
+        self.assertIn('o PC2 (10.0.0.105) está ouvindo o som daqui há 3 min',w.lan_info.text())
+        self.assertIn('microfone do PC2 está chegando em voz_do_pc2 há 2 min',w.lan_info.text())
         clipboard=ui.QApplication.clipboard();self.addCleanup(clipboard.clear)
         w.connected=True;w.ui_config={'settings':{}};self.requests.clear();w.copy_lan_command();w.capture_clipboard()
         self.assertFalse([p for p,_,_ in self.requests if p.startswith('control/clipboard')])  # o código não vai para a área
+    def test_apis_de_modelo_lista_escolha_por_entidade_e_sem_chave_na_tela(self):
+        # 07/11 (pedido humano): adicionar, alterar, remover e quem usa qual API.
+        w=self.window
+        estado=dict(revision='r1',entidades={'hoshino':None,'lilith':'gemini','alistair':None},
+                    provedores=[dict(id='gemini',rotulo='Google Gemini (AI Studio)',modelo='gemini-flash-latest',url='https://x')],
+                    apis=[dict(id='gemini',nome='Gemini',provedor='gemini',rotulo='Google Gemini (AI Studio)',url='',
+                               modelo='gemini-flash-latest',url_efetiva='https://x',tem_chave=True,usada_por=['lilith'])])
+        w.render_apis(estado)
+        self.assertEqual(w.api_list.count(),1)
+        self.assertIn('chave salva',w.api_list.item(0).text());self.assertIn('usada por: Lilith',w.api_list.item(0).text())
+        self.assertEqual(w.api_choice['lilith'].currentData(),'gemini');self.assertIsNone(w.api_choice['hoshino'].currentData())
+        self.assertIn('Local (Ollama',w.api_choice['hoshino'].itemText(0))
+        self.requests.clear();box=w.api_choice['hoshino'];box.setCurrentIndex(box.findData('gemini'));w.api_assign('hoshino')
+        self.assertEqual([d for p,d,_ in self.requests if p=='control/apis'],[dict(action='atribuir',entity='hoshino',id='gemini',revision='r1')])
+        self.requests.clear();w.api_list.setCurrentRow(0);w.api_forget_key_selected()
+        self.assertEqual([d for p,d,_ in self.requests if p=='control/apis'],[dict(action='apagar_chave',id='gemini',revision='r1')])
     def test_vram_margin_section_previews_usable_memory_and_saves_choice(self):
         w=self.window
         w.render_vram(None);self.assertTrue(w.vram_box.isHidden())
@@ -884,8 +928,8 @@ class NativeContracts(unittest.TestCase):
 
     def test_card_hover_and_reduced_motion_and_four_levels(self):
         from native_panels import MemoryCard,TIERS
-        self.assertEqual([key for _,key,_ in TIERS],['ferro','ouro','diamante','platina'])
-        card=MemoryCard('Fixture','platina',lambda:True);card.highlight(True);QTest.qWait(200)
+        self.assertEqual([key for _,key,_ in TIERS],['bronze','ferro','ouro','diamante'])  # 07/11: entra bronze, sai platina
+        card=MemoryCard('Fixture','diamante',lambda:True);card.highlight(True);QTest.qWait(200)
         self.assertGreater(card.hoverProgress,.9);card.highlight(False);QTest.qWait(200);self.assertLess(card.hoverProgress,.1)
         reduced=MemoryCard('Fixture','ouro',lambda:False);reduced.highlight(True)
         self.assertEqual(reduced.hoverProgress,0);self.assertEqual(reduced.hover_animation.state(),0)
@@ -901,7 +945,7 @@ class NativeContracts(unittest.TestCase):
         w.reduced_motion.setChecked(True);w.page_animation.stop();w.page_effect.setEnabled(False)
         w.resize(1440,1080);w.show();QTest.qWait(220)
         widgets=w.knowledge_panel.findChildren(MemoryCard)
-        self.assertEqual([c.property('importance') for c in widgets],['ferro','ouro','diamante','platina'])
+        self.assertEqual([c.property('importance') for c in widgets],['bronze','ferro','ouro','diamante'])
         qa=os.environ.get('HOSHINO_NATIVE_QA_DIR')
         if qa:
             path=Path(qa).resolve();self.assertTrue(path.is_relative_to('/tmp'));path.mkdir(parents=True,exist_ok=True)
@@ -993,6 +1037,23 @@ class NativeContracts(unittest.TestCase):
         data=next(d for p,d,_ in self.requests if p=='control/microphone')
         self.assertEqual(data['settings']['hotkey'],'F8');self.assertTrue(data['settings']['hotkey_enabled'])
         self.assertIsNone(w.capture)
+
+    def test_pc2_audio_bridge_follows_local_options_and_stops_on_close(self):
+        w=self.window;w.base='http://10.0.0.102:8770';w.token='codigo'
+        saved={}
+        with patch.object(w,'pc2_local',side_effect=lambda:dict(saved)),\
+             patch.object(w,'pc2_local_path',return_value=Path(sys.argv_root)/'compartilhado/runtime/launcher/painel_pc2-teste.json'),\
+             patch.object(ui.native_ponte,'Cliente') as Cliente:
+            self.addCleanup(lambda:(Path(sys.argv_root)/'compartilhado/runtime/launcher/painel_pc2-teste.json').unlink(missing_ok=True))
+            w.pc2_bridge=None;w.pc2_bridge_apply()
+            Cliente.assert_called_once_with('http://10.0.0.102:8770','codigo')
+            bridge=Cliente.return_value
+            self.assertEqual(bridge.ligar.call_args_list,[(('som',True),),(('microfone',True),)])  # ligada por padrão
+            saved['mic_para_pc1']=False;bridge.ligar.reset_mock();w.pc2_save_local('mic_para_pc1',False)
+            self.assertIn((('microfone',False),),bridge.ligar.call_args_list);self.assertIn((('som',True),),bridge.ligar.call_args_list)
+            bridge.estado.return_value={'som':'tocando o som do PC1 desde 21:00:00','microfone':'desligado'}
+            w.pc2_bridge_show();self.assertIn('tocando o som do PC1',w.pc2_bridge_status.text())
+            w.finish_window_only();bridge.parar.assert_called_once()
 
     def test_microphone_hotkey_does_not_type_in_chat_or_erase_the_draft(self):
         w=self.window;w.nav.setCurrentRow(ui.PAGES.index('Conversa'))

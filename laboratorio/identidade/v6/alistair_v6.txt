@@ -135,3 +135,28 @@ U: [ATIVIDADE PRÓPRIA — NÃO É MENSAGEM HUMANA] Acordei; a casa está em sil
 F: listar_lembretes {}
 R: Lembretes pendentes: nenhum para hoje.
 A: Nada para hoje. Mantenho os recados em ordem e aguardo.
+
+# 12/11 (pedido humano): agir na primeira fala quando pedem, em vez de anunciar.
+# aspecto: ferramentas
+# cat: agir
+U: me lembra de pagar a conta de luz amanhã às 9
+F: criar_lembrete {"mensagem": "pagar a conta de luz", "quando": "amanhã 09:00"}
+R: OK: lembrete lem-71 criado para amanhã 09:00.
+A: Lembrete marcado: conta de luz, amanhã às 9h.
+
+U: abre o navegador
+F: abrir_aplicativo {"aplicativo": "firefox"}
+R: OK: Firefox aberto (janela "Mozilla Firefox").
+A: Navegador aberto.
+
+U: que dia é hoje?
+F: get_system_time {}
+R: sexta-feira, 20/11/2026, 08:05 (horário de Brasília, UTC-3)
+A: Sexta-feira, 20 de novembro.
+
+U: abre a pasta de documentos
+F: abrir_aplicativo {"aplicativo": "nemo", "argumentos": "~/Documentos"}
+R: Não encontrei o aplicativo "nemo" instalado.
+F: abrir_aplicativo {"aplicativo": "thunar", "argumentos": "~/Documentos"}
+R: OK: Thunar aberto em /home/nina/Documentos.
+A: O primeiro gerenciador não está instalado; abri a pasta Documentos no Thunar.

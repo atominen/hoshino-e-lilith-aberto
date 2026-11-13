@@ -21,7 +21,7 @@ from config import DB_PATH, ENTIDADE_NOME
 
 TABELAS = {
     'memory_card_settings': """CREATE TABLE IF NOT EXISTS memory_card_settings (
-        id TEXT PRIMARY KEY,tier TEXT NOT NULL CHECK(tier IN ('ferro','ouro','diamante','platina')),
+        id TEXT PRIMARY KEY,tier TEXT NOT NULL CHECK(tier IN ('bronze','ferro','ouro','diamante')),
         updated_at TEXT NOT NULL)""",
     "episodes": """
         CREATE TABLE IF NOT EXISTS episodes (
@@ -162,6 +162,7 @@ COLUNAS_NOVAS = [
     ("goals", "priority", "INTEGER DEFAULT 3"),
     ("goals", "notes", "TEXT"),
     ("memories", "chave", "TEXT"),
+    ("memories", "rotulo", "TEXT"),       # 11/11: assunto fixo (memory/rotulos.py)
     ("checkpoints", "payload", "TEXT"),
     ("events_index", "detalhe", "TEXT"),
     ("goals", "tipo", "TEXT DEFAULT 'usuario'"),      # usuario|propria|curiosidade|origem
@@ -192,6 +193,19 @@ def _existe(cur, tabela):
     return cur.fetchone() is not None
 
 
+def migrar_niveis_cartoes(db) -> bool:
+    """07/11 (pedido humano): níveis bronze, ferro, ouro e diamante. A platina sai; o que estava nela vira diamante."""
+    linha = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='memory_card_settings'").fetchone()
+    if not linha or "'bronze'" in (linha[0] or ""):
+        return False
+    db.execute("ALTER TABLE memory_card_settings RENAME TO memory_card_settings_antiga")
+    db.execute(TABELAS['memory_card_settings'])
+    db.execute("INSERT INTO memory_card_settings(id,tier,updated_at) SELECT id, CASE WHEN tier='platina' THEN 'diamante' "
+               "ELSE tier END, updated_at FROM memory_card_settings_antiga WHERE tier IN ('ferro','ouro','diamante','platina')")
+    db.execute("DROP TABLE memory_card_settings_antiga")
+    return True
+
+
 def init_database(verbose: bool = True):
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
@@ -209,6 +223,9 @@ def init_database(verbose: bool = True):
             else:
                 cur.execute("ALTER TABLE procedures RENAME TO procedures_antiga")
                 relatorio.append("procedures antiga preservada como procedures_antiga")
+
+    if migrar_niveis_cartoes(cur):
+        relatorio.append("níveis dos cartões: bronze, ferro, ouro, diamante (platina virou diamante)")
 
     for nome, ddl in TABELAS.items():
         existia = _existe(cur, nome)

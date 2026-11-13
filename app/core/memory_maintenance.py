@@ -18,6 +18,7 @@ from pathlib import Path
 TABLES=('memories','properties','episodes','reflections','procedures','context_summaries','alistair_turns')
 VECTOR={'memories':'knowledge','properties':'knowledge','episodes':'episodes','procedures':'procedures'}
 EXPERIENCE_SCOPE='experience-v1'
+RECOMECO='memoria_recomeco.json'  # 11/11: quando a experiência foi apagada por último (resumo diário respeita)
 # Personalidade/identidade, habilidades e recibos de efeitos NÃO são resetados.
 EXPERIENCE_TABLES=TABLES+('facts','people','person_events','memory_card_settings','attempts','curiosities',
     'activity_sessions','chess_games','emotion_log','goals','reminders',
@@ -294,6 +295,10 @@ def _delete_experience(paths,preview):
     if actual!=expected:raise ValueError('Recibos técnicos divergiram; não declarar sucesso.')
     if state.is_file()and any(json.loads(state.read_text()).get(key) for key in ('activity_context','autonomous_activity')):
         raise ValueError('Contexto operacional ainda ativo; não declarar limpeza completa.')
+    # 11/11: marca do recomeço. Os recibos de ação ficam (auditoria), mas o resumo diário não os lê como experiência dela.
+    marca=paths.runtime/RECOMECO
+    marca.write_text(json.dumps(dict(desde=datetime.now(timezone.utc).isoformat(),backup=str(backup),scope=EXPERIENCE_SCOPE),indent=2))
+    os.chmod(marca,0o600)
     return dict(scope=EXPERIENCE_SCOPE,verified=True,deleted=sum(len(v)for v in content['tables'].values())+len(content['history'])+len(content['bus']),
         deleted_vectors=deleted_vectors,counts=counts,backup=str(backup),note=preview['note'],chat_cleared=True,knowledge_cleared=True,
         preserved=['identity','personality','traits','tastes','preferences','emotional_state','skill_profile','models','settings','action_receipts','audit'])

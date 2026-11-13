@@ -57,9 +57,26 @@ EVENTOS = {
 
 def _lista(valor):
     try:
-        return json.loads(valor) if valor else []
+        dados = json.loads(valor) if valor else []
     except (json.JSONDecodeError, TypeError):
         return []
+    if isinstance(dados, dict):  # formato antigo do chat_identity: {"localhub": "usuario"}
+        return [{"canal": k, "id": v} for k, v in dados.items()]
+    return dados
+
+
+# 07/11: o humano deste PC é um só. O terminal antigo (tui/local) e o chat da Central (localhub/usuario) eram duas
+# pessoas, e a do terminal nascia como "alguém" a cada memória nova: uma pessoa fantasma.
+CANAIS_LOCAIS = (("tui", "local"), ("localhub", "usuario"))
+
+
+def _pares(linha) -> set:
+    return {(str(c.get("canal")), str(c.get("id"))) for c in _lista(linha["canais"]) if isinstance(c, dict)}
+
+
+def por_id(person_id: str) -> dict | None:
+    linha = bd.um("SELECT * FROM people WHERE id = ?", (person_id,))
+    return dict(linha) if linha else None
 
 
 @bd.atomico(None)
@@ -67,10 +84,15 @@ def identificar(nome: str = "", canal: str = "tui", canal_id: str = "",
                 criar: bool = True):
     """Acha a pessoa por canal+id ou por nome; cria se for gente nova."""
     if canal_id:
-        for linha in bd.consultar("SELECT * FROM people WHERE status='active'"):
-            for c in _lista(linha["canais"]):
-                if c.get("canal") == canal and str(c.get("id")) == str(canal_id):
-                    return dict(linha)
+        linhas = bd.consultar("SELECT * FROM people WHERE status='active'")
+        for linha in linhas:
+            if (str(canal), str(canal_id)) in _pares(linha):
+                return dict(linha)
+        if (str(canal), str(canal_id)) in CANAIS_LOCAIS:
+            for linha in linhas:
+                if _pares(linha) & set(CANAIS_LOCAIS):
+                    vincular_canal(linha["id"], canal, canal_id)
+                    return por_id(linha["id"])
     if nome and canal not in {"interentidades", "localhub"}:
         linha = bd.um("SELECT * FROM people WHERE lower(nome) = lower(?) AND status='active'",
                       (nome,))
@@ -242,21 +264,53 @@ def descricao_estagio(pessoa) -> str:
     return ""
 
 
+def _o_que_sei(pessoa, limite: int = 6) -> list[str]:
+    """O que tenho guardado sobre esta pessoa (anotações ligadas a ela pelo canal local), mais firme primeiro."""
+    marcas = {f"participante:{c.get('id')}" for c in _lista(pessoa.get("canais")) if isinstance(c, dict) and c.get("id")}
+    if not marcas:
+        return []
+    try:
+        linhas = bd.consultar("SELECT content, type, source, entities FROM memories WHERE status='active' "
+                              "ORDER BY confidence DESC, created_at DESC LIMIT 200")
+    except Exception:  # noqa: BLE001 — sem memória, o bloco fica só com o vínculo
+        return []
+    achadas = []
+    for linha in linhas:
+        try:
+            entidades = set(json.loads(linha["entities"] or "[]"))
+        except (ValueError, TypeError):
+            continue
+        if entidades & marcas and linha["type"] not in ("reflexao", "diario"):
+            achadas.append(str(linha["content"]).strip())
+        if len(achadas) >= limite:
+            break
+    return achadas
+
+
 def bloco_pessoa(pessoa) -> str:
-    """Como o vínculo entra no prompt: muda o tom, não vira assunto."""
+    """Como o vínculo entra no prompt: muda o tom e responde "quem sou eu?".
+
+    07/11 (teste de uso): o bloco dizia "não vira assunto da conversa" e ela não respondia quem a pessoa era; e falava
+    da pessoa como "ela"/"nela" ("pessoa" é feminino), daí "como quiser ser chamada" para o Gustavo."""
     if not pessoa:
         return ""
-    nome = pessoa["nome"] if pessoa["nome"] != "alguém" else "essa pessoa"
+    conhecido = pessoa["nome"] not in ("alguém", "", None)
+    nome = pessoa["nome"] if conhecido else "essa pessoa"
     papel = f", {pessoa['papel']}" if pessoa.get("papel") else ""
     afin = pessoa["afinidade"]
-    sentimento = ("eu gosto dela" if afin > 0.25 else
-                  "eu tenho ressalvas com ela" if afin < -0.25 else
-                  "eu ainda estou formando opinião sobre ela")
-    return (f"[COM QUEM EU ESTOU FALANDO] {nome}{papel}. Nossa relação está em "
-            f"'{estagio_de(pessoa)}' ({descricao_estagio(pessoa)}). "
-            f"Já foram {pessoa['interacoes']} conversas, minha confiança nela está em "
-            f"{pessoa['confianca']:.0%} e {sentimento}. Isso muda o quanto eu me solto "
-            f"— não vira assunto da conversa.")
+    sentimento = (f"eu gosto de {nome}" if afin > 0.25 else
+                  f"eu tenho ressalvas com {nome}" if afin < -0.25 else
+                  f"ainda estou formando opinião sobre {nome}")
+    texto = (f"[COM QUEM EU ESTOU FALANDO] {nome}{papel}. Nossa relação está em "
+             f"'{estagio_de(pessoa)}' ({descricao_estagio(pessoa)}). "
+             f"Já foram {pessoa['interacoes']} conversas, minha confiança em {nome} está em "
+             f"{pessoa['confianca']:.0%} e {sentimento}. Isso muda o quanto eu me solto. "
+             f"Se perguntarem quem é, respondo com isto e com o que sei abaixo. "
+             f"Não presumo gênero: uso o nome até saber.")
+    sei = _o_que_sei(pessoa) if conhecido or pessoa.get("canais") else []
+    if sei:
+        texto += "\nO que sei sobre " + nome + ":\n" + "\n".join(f"- {s}" for s in sei)
+    return texto
 
 
 def listar(limite: int = 10) -> str:

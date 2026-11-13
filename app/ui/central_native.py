@@ -31,11 +31,12 @@ from logic_workshop import LogicWorkshop
 from native_chat_stream import merge_previews, update_chat_document
 from native_asr_client import LiveASRClient
 from native_listening import ListeningPanel
+import native_ponte
 from PyQt5.QtCore import Qt, QThread, QTimer, QProcess, QEvent, pyqtSignal, QPropertyAnimation, QEasingCurve, QBuffer, QIODevice
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 from PyQt5.QtGui import QKeySequence, QIcon, QPixmap, QImage, QDesktopServices
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QGridLayout, QLabel, QPushButton, QListWidget, QStackedWidget, QTextBrowser,
+    QGridLayout, QLabel, QPushButton, QListWidget, QListWidgetItem, QStackedWidget, QTextBrowser,
     QPlainTextEdit, QLineEdit, QCheckBox, QProgressBar, QKeySequenceEdit,
     QMessageBox, QInputDialog, QTreeWidget, QTreeWidgetItem, QFileDialog, QGroupBox, QFormLayout, QScrollArea, QGraphicsOpacityEffect, QColorDialog, QDialog, QDialogButtonBox, QFrame)
 
@@ -101,13 +102,14 @@ class Rpc(QThread):
     done=pyqtSignal(object)
     def __init__(self,base,token,path,data=None,raw=False,binary=False,timeout=8):
         super().__init__();self.base=base;self.token=token;self.path=path;self.data=data;self.raw=raw;self.binary=binary;self.timeout=timeout
-        self.memory_access=''
+        self.memory_access='';self.client_id=''
     def run(self):
         try:
             payload=self.data if self.binary else json.dumps(self.data).encode() if self.data is not None else None
             req=Request(self.base+'/api/'+self.path,data=payload,headers={'Authorization':'Bearer '+self.token,
                 'Content-Type':('audio/wav' if self.path.startswith('audio/transcribe') else 'application/octet-stream') if self.binary else 'application/json'})
             if self.memory_access:req.add_header('X-Memory-Access',self.memory_access)
+            if self.client_id:req.add_header('X-Central-Client',self.client_id)  # 07/11: só a janela ativa comanda
             with urlopen(req,timeout=self.timeout) as response:
                 value=response.read(40*1024**2+1) if self.raw else json.load(response)
                 if self.raw and len(value)>40*1024**2:raise ValueError('Resposta acima do limite de áudio.')
@@ -116,8 +118,9 @@ class Rpc(QThread):
             try:message=json.loads(exc.read(4096)).get('error','Pedido recusado pela central.')
             except Exception:message='Pedido recusado pela central.'
             self.done.emit({'ok':False,'error':message,'status':exc.code})
-        except Exception:
-            self.done.emit({'ok':False,'error':'Central indisponível ou prazo excedido. Resultado não confirmado; pedido mutável não foi repetido.'})
+        except Exception as exc:
+            refused=isinstance(getattr(exc,'reason',exc),ConnectionRefusedError)  # 07/11: porta fechada = Central fechada
+            self.done.emit({'ok':False,'refused':refused,'error':'Central indisponível ou prazo excedido. Resultado não confirmado; pedido mutável não foi repetido.'})
 
 
 class InteractionReview(QDialog):
@@ -246,6 +249,23 @@ def chat_bubbles(conversation, entity, human_name='Usuário'):
     return ''.join(lines),targets
 
 
+def hotkey_runtime(root):
+    """Python que escuta o atalho global: o do projeto (PC1) ou, no painel do PC2, o do sistema com pynput."""
+    principal=Path(root)/'compartilhado/ambientes/principal/bin/python'
+    if principal.is_file():return principal
+    import importlib.util
+    if importlib.util.find_spec('pynput') is not None:return Path(sys.executable)
+    return None
+
+
+def draft_keeps_transcript(transcript, text):
+    """O rascunho ainda conserva a fala gravada? Mesma regra da Central (`audio_origin`) e do painel web."""
+    words=lambda value:re.findall(r'\w+',str(value or '').casefold())
+    source,draft=words(transcript),set(words(text))
+    overlap=sum(word in draft for word in source)
+    return bool(source) and overlap>=(len(source) if len(source)<4 else (len(source)+1)//2)
+
+
 class Central(LiveASRClient,QMainWindow):
     def __init__(self,root,entity='hoshino'):
         super().__init__();self.root=Path(root);self.base,self.token=endpoint(root);self.workers=[]
@@ -268,7 +288,7 @@ class Central(LiveASRClient,QMainWindow):
         self.chat_state=None;self.chat_previews={};self.chat_stream_pending=None
         self.memory_access='';self.memory_entity=None;self.memory_until=0;self.memory_generation=0
         self.memory_timer=QTimer(self);self.memory_timer.setSingleShot(True);self.memory_timer.timeout.connect(self.lock_memories)
-        self.entity_details={};self.closing=False;self.temp=tempfile.TemporaryDirectory(prefix='hoshino-ui-');self.setWindowTitle('Hoshino · Lilith · Alistair — Central')
+        self.entity_details={};self.closing=False;self.temp=tempfile.TemporaryDirectory(prefix='hoshino-ui-');self.setWindowTitle('Central')  # 11/11: o título vira percepção delas; sem os três nomes
         self.setWindowIcon(QIcon(str(self.root/'desktop/hoshino-e-lilith.svg')))
         self.shutdown_pending=False;self.ui_only_smoke=False;self.shutdown_generation=None;self.shutdown_requested_at=0
         self.shutdown_timer=QTimer(self);self.shutdown_timer.setInterval(400);self.shutdown_timer.timeout.connect(self.poll_shutdown)
@@ -288,6 +308,13 @@ class Central(LiveASRClient,QMainWindow):
         self.gpu_alert_text.setWordWrap(True);alert_row.addWidget(self.gpu_alert_text,1)
         alert_row.addWidget(self.button('Abrir Modelos',self.open_gpu_alert_models));alert_row.addWidget(self.button('Dispensar',self.dismiss_gpu_alert))
         outer.addWidget(self.gpu_alert_box);self.gpu_alert_box.hide()
+        # 07/11 (pedido humano): PC1 e PC2 não comandam juntos; vale a última janela que recebeu foco.
+        self.window_active=True;self.window_pause_box=QFrame();self.window_pause_box.setObjectName('gpuAlert')
+        pause_row=QHBoxLayout(self.window_pause_box);pause_row.setContentsMargins(14,10,10,10)
+        pause_text=QLabel('Esta janela está em pausa: a outra janela da Central está em uso. Mensagens, microfone e '
+                          'configurações só funcionam numa janela por vez.');pause_text.setObjectName('gpuAlertText')
+        pause_text.setWordWrap(True);pause_row.addWidget(pause_text,1);pause_row.addWidget(self.button('Usar esta janela',self.claim_window))
+        outer.addWidget(self.window_pause_box);self.window_pause_box.hide()
         self.gpu_alerts=[];self.gpu_alert_notified=set();self.gpu_alert_dismissed=set();self.gpu_alert_sent=None
         main=QHBoxLayout();main.setSpacing(20);outer.addLayout(main,1);self.nav=QListWidget();self.nav.setObjectName('navigation');self.nav.addItems(PAGES);self.nav.setFixedWidth(184);main.addWidget(self.nav)
         self.stack=QStackedWidget();main.addWidget(self.stack,1);self.pages={}
@@ -335,6 +362,8 @@ class Central(LiveASRClient,QMainWindow):
         self.pc2_sense_process=None;self.pc2_sense_sent=None;self.pc2_command=None;self.pc2_poll_sent=None
         self.pc2_sense_timer=QTimer(self);self.pc2_sense_timer.timeout.connect(self.pc2_collect_senses);self.pc2_sense_timer.start(10000)
         self.pc2_command_timer=QTimer(self);self.pc2_command_timer.timeout.connect(self.pc2_poll_commands);self.pc2_command_timer.start(2000)
+        self.pc2_bridge=None;self.pc2_bridge_timer=QTimer(self);self.pc2_bridge_timer.timeout.connect(self.pc2_bridge_show)
+        if self.remote_panel():self.pc2_bridge_timer.start(2000);QTimer.singleShot(1500,self.pc2_bridge_apply)
         self.request('control/microphone',callback=self.loaded_microphone);self.load_interface();self.refresh();self.refresh_active()
     def current_entity(self):return ENTITIES[self.entity.currentIndex()]
     def remote_panel(self):return urlsplit(self.base or '').hostname not in (None,'127.0.0.1')
@@ -386,12 +415,13 @@ class Central(LiveASRClient,QMainWindow):
             if not quiet:self.notice.setText('Aguarde os pedidos em andamento; nada novo foi enviado.')
             return
         connection=(self.base,self.token)
-        worker=Rpc(*connection,path,data,raw,binary,timeout);self.workers.append(worker)
+        worker=Rpc(*connection,path,data,raw,binary,timeout);self.workers.append(worker);worker.client_id=getattr(self,'focus_id','')
         protected=path.split('?')[0] in {'control/knowledge','control/logic'}
         memory_generation=self.memory_generation
         memory_access=self.memory_access
         if protected or path=='control/knowledge/lock':worker.memory_access=memory_access
         def finish(out):
+            self.track_remote_central(out)
             if not self.sync_endpoint() or connection!=(self.base,self.token):
                 # Nem aplicar callback de resposta velha, nem cancelar um ID
                 # estrangeiro na sessão nova, nem repetir pedido mutável.
@@ -406,6 +436,7 @@ class Central(LiveASRClient,QMainWindow):
                 return
             if not out['ok']:
                 if protected and out.get('status')==403:self.lock_memories(revoke=False)
+                if out.get('status')==409 and 'janela está em pausa' in str(out.get('error')):self.set_window_active(False)
                 if not silent:self.notice.setText(out['error'])  # poller de fundo (alerta VRAM) não cobre avisos
                 if callback:callback(None)
             elif callback:callback(out['value'])
@@ -422,7 +453,18 @@ class Central(LiveASRClient,QMainWindow):
         self.refresh_active()
     def focus_entity(self,entity):self.entity.setCurrentIndex(ENTITIES.index(entity));self.nav.setCurrentRow(1);self.showNormal();self.raise_();self.activateWindow()
     def report_focus(self,closed=False):
-        self.request('control/focus',{'client_id':self.focus_id,'focused':self.isActiveWindow(),'closed':closed,'client':'native'},callback=lambda _:None,quiet=True)
+        self.request('control/focus',{'client_id':self.focus_id,'focused':self.isActiveWindow(),'closed':closed,'client':'native'},callback=self.focus_result,quiet=True)
+    def claim_window(self):
+        self.request('control/focus',{'client_id':self.focus_id,'focused':True,'closed':False,'client':'native'},callback=self.focus_result,quiet=True)
+    def focus_result(self,out):
+        if isinstance(out,dict) and isinstance(out.get('active'),bool) and not self.closing:self.set_window_active(out['active'])
+    def set_window_active(self,active):
+        if active==self.window_active:return
+        self.window_active=active;self.window_pause_box.setVisible(not active)
+        if not active:
+            if self.hotkey_capture is self.capture and self.capture:self.stop_capture(False)
+            self.hotkey_capture=None
+        self.notice.setText('Esta janela voltou a comandar.' if active else 'Janela em pausa: a outra janela da Central está em uso.')
     def changeEvent(self,event):
         super().changeEvent(event)
         if event.type()==QEvent.ActivationChange and hasattr(self,'focus_id') and not self.closing:self.report_focus()
@@ -438,8 +480,7 @@ class Central(LiveASRClient,QMainWindow):
         self.listening_panel.clear()
         self.stop_capture(False);self.stop_voice();self.refresh();self.refresh_active()
     def build_entities(self):
-        layout=self.pages['Entidades']
-        layout.addWidget(self.button('Laboratório Neural · treino, professor e avaliação',self.open_laboratory))
+        layout=self.pages['Entidades']  # 07/11 (pedido humano): sem o botão do laboratório aqui; fica na aba própria
         row=QHBoxLayout();layout.addLayout(row);self.cards={}
         for e in ENTITIES:
             group=QGroupBox();group.setStyleSheet('QGroupBox{border-top:2px solid '+COLORS[e]+';}')
@@ -469,24 +510,43 @@ class Central(LiveASRClient,QMainWindow):
         self.chat_search=QLineEdit();self.chat_search.setPlaceholderText('Buscar assunto neste dia · Enter para aplicar');self.chat_search.setMaxLength(200)
         self.chat_search.returnPressed.connect(self.chat_find_topic);layout.addWidget(self.chat_search)
         self.chat_hint=QLabel('Consultando sessão atual…');self.chat_hint.setWordWrap(True);layout.addWidget(self.chat_hint)
-        self.chat=ChatBrowser(self.fetch_attachment);self.chat.setOpenLinks(False);self.chat.setOpenExternalLinks(False)
-        self.chat.anchorClicked.connect(self.review_interaction);self.review_targets={};layout.addWidget(self.chat,1)
         pages=QHBoxLayout();self.chat_older=self.button('Mais antigas',lambda:self.chat_paginate(True));self.chat_newer=self.button('Mais recentes',lambda:self.chat_paginate(False))
         pages.addWidget(self.chat_older);pages.addWidget(self.chat_newer);pages.addStretch();layout.addLayout(pages)
-        self.operation=QLabel('Sem operação observada');self.operation.setWordWrap(True);layout.addWidget(self.operation)
-        self.draft=ChatDraft();self.draft.send_requested.connect(self.send);self.draft.setPlaceholderText('Mensagem… Enter envia · Shift+Enter quebra linha');self.draft.setMaximumHeight(120);layout.addWidget(self.draft)
-        self.live_preview=QPlainTextEdit();self.live_preview.setReadOnly(True);self.live_preview.setMaximumHeight(85)
-        self.live_preview.setPlaceholderText('Escutando · transcrição em andamento, ainda pode mudar…');self.live_preview.hide();layout.addWidget(self.live_preview)
+        # Um painel só, como nos chats comuns: histórico em cima e a caixa de mensagem
+        # embaixo, dentro dele, com anexar à esquerda e enviar à direita (pedido humano 11/11).
+        panel=QFrame();panel.setObjectName('chatPanel');box=QVBoxLayout(panel);box.setContentsMargins(1,1,1,1);box.setSpacing(0)
+        self.chat=ChatBrowser(self.fetch_attachment);self.chat.setObjectName('chatHistory');self.chat.setOpenLinks(False);self.chat.setOpenExternalLinks(False)
+        self.chat.anchorClicked.connect(self.review_interaction);self.review_targets={};box.addWidget(self.chat,1)
+        self.live_preview=QPlainTextEdit();self.live_preview.setObjectName('chatLive');self.live_preview.setReadOnly(True);self.live_preview.setMaximumHeight(85)
+        self.live_preview.setPlaceholderText('Escutando · transcrição em andamento, ainda pode mudar…');self.live_preview.hide();box.addWidget(self.live_preview)
+        composer=QFrame();composer.setObjectName('chatComposer');line=QHBoxLayout(composer);line.setContentsMargins(8,6,8,6);line.setSpacing(6)
+        self.chat_attach=QPushButton('+');self.chat_attach.setObjectName('chatIcon');self.chat_attach.setCursor(Qt.PointingHandCursor)
+        self.chat_attach.setToolTip('Anexar arquivo');self.chat_attach.setAccessibleName('Anexar');self.chat_attach.clicked.connect(self.attach)
+        self.draft=ChatDraft();self.draft.setObjectName('chatDraft');self.draft.send_requested.connect(self.send)
+        self.draft.setPlaceholderText('Mensagem… Enter envia · Shift+Enter quebra linha')
+        self.draft.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded);self.draft.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.draft.document().contentsChanged.connect(self.fit_draft)
+        self.chat_send=QPushButton('↑');self.chat_send.setObjectName('chatSend');self.chat_send.setCursor(Qt.PointingHandCursor)
+        self.chat_send.setToolTip('Enviar (Enter)');self.chat_send.setAccessibleName('Enviar');self.chat_send.clicked.connect(self.send)
+        line.addWidget(self.chat_attach,0,Qt.AlignBottom);line.addWidget(self.draft,1);line.addWidget(self.chat_send,0,Qt.AlignBottom)
+        holder=QWidget();holder.setObjectName('chatComposerArea');around=QVBoxLayout(holder);around.setContentsMargins(12,6,12,12);around.addWidget(composer)
+        box.addWidget(holder);layout.addWidget(panel,1);self.fit_draft()
+        self.operation=QLabel('Sem operação observada');self.operation.setObjectName('chatOperation');self.operation.setWordWrap(True);layout.addWidget(self.operation)
         self.auto_voice=QCheckBox('Ler novas respostas em voz (pode consumir quota)');layout.addWidget(self.auto_voice)
-        row=self.bar(layout,[('Enviar',self.send),('Interromper fala',self.stop_voice),('Anexar',self.attach),('Microfone · aba Áudio',lambda:self.nav.setCurrentRow(PAGES.index('Áudio')))])
-        self.chat_send=row.itemAt(0).widget();self.chat_attach=row.itemAt(2).widget()
+        row=self.bar(layout,[('Interromper fala',self.stop_voice),('Microfone · aba Áudio',lambda:self.nav.setCurrentRow(PAGES.index('Áudio')))])
         self.chat_clipboard = self.button('Importar conteúdo copiado', self.import_clipboard)
         self.chat_clipboard.setToolTip('Importa o texto ou print atual na conversa direta com Hoshino ou Lilith.')
-        row.addWidget(self.chat_clipboard)
+        row.insertWidget(1,self.chat_clipboard)
         self.chat_record=QPushButton('Iniciar / parar detecção');self.chat_record.clicked.connect(self.toggle_capture)
         self.ptt=QPushButton('Comando · segure para falar');self.ptt.pressed.connect(self.ptt_start);self.ptt.released.connect(lambda:self.stop_capture(True))
         self.level=QProgressBar();self.level.setRange(0,100);self.level.setFormat('Nível do microfone: %p%')
         self.chat_controls()
+
+    def fit_draft(self):
+        """Caixa de mensagem cresce com o texto, de 1 até 6 linhas; depois rola."""
+        lines=max(1,min(6,int(self.draft.document().size().height())))
+        frame=self.draft.contentsMargins();doc=self.draft.document().documentMargin()
+        self.draft.setFixedHeight(int(lines*self.draft.fontMetrics().lineSpacing()+2*doc+frame.top()+frame.bottom()+8))
 
     def change_chat_scope(self,*_):
         e=self.current_entity();self.scope_drafts[self.chat_scope]=dict(self.drafts,**{e:self.draft.toPlainText()})
@@ -666,6 +726,22 @@ class Central(LiveASRClient,QMainWindow):
         self.tools_note=QLabel('Memórias e personalidade não são ferramentas. Ouvir o ambiente não inclui a voz de saída nem falar por comando.');self.tools_note.setWordWrap(True);layout.addWidget(self.tools_note)
     def build_models(self):
         layout=self.pages['Modelos']
+        # 07/11 (pedido humano): APIs de modelo — adicionar, alterar, remover e quem usa qual.
+        self.api_state=None
+        self.api_box=QGroupBox('APIs de modelo (opcional)');api_layout=QVBoxLayout(self.api_box)
+        self.api_warning=QLabel('Cada entidade usa o modelo local (Ollama) ou uma API cadastrada aqui. Com API, as conversas e '
+                                'memórias daquela entidade saem deste PC; se a API falhar ou a cota acabar, ela volta sozinha '
+                                'para o modelo local. A chave nunca é mostrada de volta.');self.api_warning.setWordWrap(True)
+        api_layout.addWidget(self.api_warning)
+        self.api_list=QListWidget();self.api_list.setMinimumHeight(96);api_layout.addWidget(self.api_list)
+        self.bar(api_layout,[('Adicionar API',lambda:self.api_dialog(None)),('Alterar',self.api_edit_selected),
+                             ('Remover',self.api_remove_selected),('Apagar chave',self.api_forget_key_selected)])
+        api_form=QFormLayout();api_layout.addLayout(api_form);self.api_choice={}
+        for e in ENTITIES:
+            box=QComboBox();box.setAccessibleName('Modelo usado por '+e.capitalize())
+            box.activated.connect(lambda _,who=e:self.api_assign(who));self.api_choice[e]=box
+            api_form.addRow(e.capitalize()+' usa',box)
+        layout.addWidget(self.api_box)
         self.execution_config=None;self.execution_certificate=''
         self.execution_box=QGroupBox('Onde executar Alistair');execution_layout=QVBoxLayout(self.execution_box);execution_form=QFormLayout();execution_layout.addLayout(execution_form)
         self.execution_destination=QComboBox()
@@ -790,6 +866,13 @@ class Central(LiveASRClient,QMainWindow):
         self.pc2_screen.setChecked(self.pc2_local().get('tela') is True);self.pc2_screen.toggled.connect(lambda on:self.pc2_save_local('tela',on))
         self.pc2_status=QLabel('Sentidos deste PC: aguardando o primeiro envio.');self.pc2_status.setWordWrap(True)
         pc2_layout.addWidget(self.pc2_allow);pc2_layout.addWidget(self.pc2_screen);pc2_layout.addWidget(self.pc2_status)
+        # 11/11 (pedido humano): ponte de áudio pela própria Central, no lugar do SonoBus. Ligada por padrão.
+        self.pc2_hear=QCheckBox('Tocar aqui o som do PC1 (tudo o que toca lá)')
+        self.pc2_hear.setChecked(self.pc2_local().get('ouvir_pc1',True) is not False);self.pc2_hear.toggled.connect(lambda on:self.pc2_save_local('ouvir_pc1',on))
+        self.pc2_talk=QCheckBox('Mandar o microfone deste PC para o PC1 (as entidades ouvem por ele)')
+        self.pc2_talk.setChecked(self.pc2_local().get('mic_para_pc1',True) is not False);self.pc2_talk.toggled.connect(lambda on:self.pc2_save_local('mic_para_pc1',on))
+        self.pc2_bridge_status=QLabel('Ponte de áudio: iniciando.');self.pc2_bridge_status.setWordWrap(True)
+        pc2_layout.addWidget(self.pc2_hear);pc2_layout.addWidget(self.pc2_talk);pc2_layout.addWidget(self.pc2_bridge_status)
         layout.addWidget(self.pc2_box);self.pc2_box.setVisible(self.remote_panel());layout.addStretch()
     def pick_orb_color(self,entity):
         from PyQt5.QtGui import QColor
@@ -809,6 +892,9 @@ class Central(LiveASRClient,QMainWindow):
         def received(out):
             self.polling=False
             if out is None:return
+            if out.get('closing') is True and not self.shutdown_pending:
+                # 07/11: vale no PC1 e no PC2: encerrada pelo outro lado, a janela fecha junto.
+                self.close_with_central('A Central está encerrando; esta janela fecha junto.');return
             jobs=out.get('jobs',[]);leases=out.get('resources',[])
             for e,label in self.cards.items():
                 p=next((p for p in out.get('presence',[]) if p.get('entity_id')==e),{})
@@ -877,7 +963,12 @@ class Central(LiveASRClient,QMainWindow):
         if not text:return
         session_id=self.chat_session['id'];scope=self.chat_scope;key=(scope,e,session_id,text);identifier=self.submissions.setdefault(key,uuid.uuid4().hex)
         data={'entity':e,'text':text,'wake':True,'submission_id':identifier,'conversation_session_id':session_id,'chat_scope':scope}
+        # 07/11 (teste de uso no PC2): a transcrição antiga ficava presa ao rascunho mesmo com outro texto digitado;
+        # a Central recusava ("Texto não corresponde à transcrição") e, sem envio, o vínculo nunca saía. Igual ao
+        # painel web: só vincula a fala se o texto ainda conserva o trecho gravado; senão vai como texto digitado.
         origin=self.origins.get(e)
+        if origin and not draft_keeps_transcript(origin.get('text'),text):
+            self.origins.pop(e,None);origin=None
         if origin:data.update(audio_job_id=origin['id'],draft_origin=True,automatic_asr=automatic)
         if origin and origin.get('ids'):data['audio_job_ids']=origin['ids']
         def sent(out):
@@ -1039,8 +1130,11 @@ class Central(LiveASRClient,QMainWindow):
         if self.hotkey_signature==signature:return
         self.stop_hotkey()
         if not signature[0]:self.hotkey_status.setText('DESLIGADO · marque Habilitar atalho e Salvar microfone. Escolher a tecla não abre captura.');return
-        runtime=self.root/'compartilhado/ambientes/principal/bin/python'
-        if not runtime.is_file():self.hotkey_status.setText('Atalho indisponível: ambiente principal não encontrado.');return
+        runtime=hotkey_runtime(self.root)
+        if runtime is None:
+            # 07/11: o painel do PC2 roda no Python do sistema, sem o ambiente do projeto; o atalho ficava mudo.
+            self.hotkey_status.setText('Atalho indisponível: falta o pynput. Neste PC: sudo apt install python3-pynput '
+                                       'e reabra a Central.');return
         process=QProcess(self);self.hotkey_process=process;self.hotkey_signature=signature;self.hotkey_buffer=b''
         process.setWorkingDirectory(str(self.root))
         def read():
@@ -1069,6 +1163,8 @@ class Central(LiveASRClient,QMainWindow):
         elif event=='unavailable':self.hotkey_status.setText('Atalho indisponível nesta sessão. Use X11 ou o botão local.')
         elif event=='press' and not self.closing:
             if self.hotkey_edit.hasFocus():return  # choosing a key is not permission to record
+            if not self.window_active:
+                self.notice.setText('Atalho ignorado: esta janela está em pausa; a outra janela da Central está em uso.');return
             if self.capture or self.asr_jobs or self.chat_read_only or self.mic_settings['mode']!='command':return
             self.ptt_start();self.hotkey_capture=self.capture
         elif event=='release' and self.hotkey_capture:
@@ -1697,7 +1793,72 @@ class Central(LiveASRClient,QMainWindow):
                 self.tool_config=None;self.load_tools();self.request('control/microphone',callback=self.loaded_microphone,quiet=True)
                 self.notice.setText('Permissões salvas para próximos usos. Nada foi iniciado automaticamente.')
         self.request('control/tools',{'entity':entity,'capabilities':changes,'revision':self.tool_config['revision']},callback=saved)
+    def load_apis(self):
+        self.request('control/apis',callback=self.render_apis,quiet=True)
+    def render_apis(self,out):
+        if not isinstance(out,dict):return
+        self.api_state=out;self.api_list.clear()
+        nomes={'hoshino':'Hoshino','lilith':'Lilith','alistair':'Alistair'}
+        for api in out.get('apis',[]):
+            uso=', '.join(nomes.get(e,e) for e in api.get('usada_por',[])) or 'ninguém'
+            texto=f"{api['nome']} · {api['rotulo']} · {api['modelo']} · {'chave salva' if api['tem_chave'] else 'sem chave'} · usada por: {uso}"
+            sit=api.get('situacao') or {}
+            if sit.get('estado')=='ok':texto+=f" · funcionou em {sit.get('quando')}"
+            elif sit.get('estado')=='erro':texto+=f" · erro em {sit.get('quando')}: {str(sit.get('detalhe',''))[:70]}"
+            item=QListWidgetItem(texto);item.setData(Qt.UserRole,api);self.api_list.addItem(item)
+        for e,box in self.api_choice.items():
+            box.blockSignals(True);box.clear();box.addItem('Local (Ollama, neste PC)',None)
+            for api in out.get('apis',[]):box.addItem(api['nome']+' · '+api['modelo'],api['id'])
+            box.setCurrentIndex(max(0,box.findData(out.get('entidades',{}).get(e))));box.blockSignals(False)
+    def api_selected(self):
+        item=self.api_list.currentItem()
+        if not item:self.notice.setText('Escolha uma API na lista.');return None
+        return item.data(Qt.UserRole)
+    def api_send(self,data,done_text):
+        if not self.api_state:self.notice.setText('APIs ainda não carregadas; tente de novo.');return
+        def saved(out):
+            if out:self.render_apis(out);self.notice.setText(done_text)
+        self.request('control/apis',dict(data,revision=self.api_state.get('revision')),callback=saved)
+    def api_dialog(self,api):
+        if not self.api_state:self.notice.setText('APIs ainda não carregadas; tente de novo.');return
+        dialog=QDialog(self);dialog.setWindowTitle('Alterar API' if api else 'Adicionar API');form=QFormLayout(dialog)
+        nome=QLineEdit((api or {}).get('nome',''));provedor=QComboBox()
+        for p in self.api_state.get('provedores',[]):provedor.addItem(p['rotulo'],p['id'])
+        url=QLineEdit((api or {}).get('url',''));modelo=QLineEdit(((api or {}).get('modelo','')) if api else '')
+        chave=QLineEdit();chave.setEchoMode(QLineEdit.Password)
+        chave.setPlaceholderText('Deixe vazio para manter a chave salva' if api and api.get('tem_chave') else 'Cole a chave aqui')
+        def presets():
+            p=next((x for x in self.api_state.get('provedores',[]) if x['id']==provedor.currentData()),{})
+            url.setPlaceholderText(p.get('url') or 'https://…/v1/chat/completions');modelo.setPlaceholderText(p.get('modelo') or 'nome do modelo')
+        provedor.currentIndexChanged.connect(lambda _:presets())
+        if api:provedor.setCurrentIndex(max(0,provedor.findData(api.get('provedor'))))
+        presets()
+        for rotulo,campo in (('Nome',nome),('Provedor',provedor),('Endereço (só se for diferente)',url),('Modelo',modelo),('Chave',chave)):form.addRow(rotulo,campo)
+        botoes=QDialogButtonBox(QDialogButtonBox.Save|QDialogButtonBox.Cancel);form.addRow(botoes)
+        botoes.accepted.connect(dialog.accept);botoes.rejected.connect(dialog.reject)
+        if dialog.exec_()!=QDialog.Accepted:return
+        data=dict(action='salvar',nome=nome.text().strip(),provedor=provedor.currentData(),url=url.text().strip(),modelo=modelo.text().strip())
+        if api:data['id']=api['id']
+        if chave.text().strip():data['chave']=chave.text().strip()
+        chave.clear()
+        self.api_send(data,'API salva. Escolha abaixo quem usa cada uma.')
+    def api_edit_selected(self):
+        api=self.api_selected()
+        if api:self.api_dialog(api)
+    def api_remove_selected(self):
+        api=self.api_selected()
+        if not api:return
+        if QMessageBox.question(self,'Remover API','Remover "'+api['nome']+'" e a chave dela? Quem usava volta para o modelo local.')!=QMessageBox.Yes:return
+        self.api_send(dict(action='remover',id=api['id']),'API removida; quem usava voltou para o modelo local.')
+    def api_forget_key_selected(self):
+        api=self.api_selected()
+        if api:self.api_send(dict(action='apagar_chave',id=api['id']),'Chave apagada deste PC.')
+    def api_assign(self,entity):
+        box=self.api_choice[entity];escolhida=box.currentData()
+        self.api_send(dict(action='atribuir',entity=entity,id=escolhida),
+                      entity.capitalize()+(' usa agora '+box.currentText()+' (vale na próxima resposta).' if escolhida else ' usa agora o modelo local.'))
     def load_models(self):
+        self.load_apis()
         e=self.current_entity()
         self.execution_box.setVisible(e=='alistair')
         if e=='alistair':self.load_execution()
@@ -1917,8 +2078,25 @@ class Central(LiveASRClient,QMainWindow):
     def pc2_save_local(self,key,checked):
         path=self.pc2_local_path();path.parent.mkdir(parents=True,exist_ok=True)
         path.write_text(json.dumps(dict(self.pc2_local(),**{key:bool(checked)}))+'\n')
-        what={'comandos':'Abrir e executar coisas','tela':'Ver a tela'}[key]
-        self.notice.setText(what+' neste PC: '+('permitido.' if checked else 'desligado.'))
+        what={'comandos':'Abrir e executar coisas','tela':'Ver a tela','ouvir_pc1':'Som do PC1','mic_para_pc1':'Microfone para o PC1'}[key]
+        self.notice.setText(what+' neste PC: '+('permitido.' if key in ('comandos','tela') and checked else 'ligado.' if checked else 'desligado.'))
+        if key in ('ouvir_pc1','mic_para_pc1'):self.pc2_bridge_apply()
+    def pc2_bridge_apply(self):
+        """Liga/desliga a ponte de áudio conforme as opções deste PC (só no painel do PC2)."""
+        if self.closing or not self.remote_panel():return
+        if getattr(self,'pc2_bridge',None) is None:
+            if not (shutil.which('parec') and shutil.which('pacat')):
+                self.pc2_bridge_status.setText('Ponte de áudio: parec/pacat ausentes (pacote pulseaudio-utils).');return
+            self.pc2_bridge=native_ponte.Cliente(self.base,self.token)
+        local=self.pc2_local()
+        self.pc2_bridge.ligar('som',local.get('ouvir_pc1',True) is not False)
+        self.pc2_bridge.ligar('microfone',local.get('mic_para_pc1',True) is not False)
+    def pc2_bridge_show(self):
+        bridge=getattr(self,'pc2_bridge',None)
+        if bridge is None:return
+        bridge.base=(self.base or '').rstrip('/');bridge.token=self.token  # código trocado no PC1: a próxima reconexão já usa o novo
+        state=bridge.estado()
+        self.pc2_bridge_status.setText('Ponte de áudio · som do PC1: '+state['som']+' · microfone: '+state['microfone']+'.')
     def pc2_collect_senses(self):
         # Sensores do próprio projeto (janela ativa, janelas, mídia, tempo parado, carga), num processo à parte.
         if self.closing or not self.connected or not self.remote_panel() or self.pc2_sense_process is not None:return
@@ -2021,6 +2199,12 @@ class Central(LiveASRClient,QMainWindow):
             try:net=str(ipaddress.ip_network(address+'/24',strict=False))
             except ValueError:net='10.0.0.0/24'
             lines.append(f"Se o firewall (ufw) estiver ligado: sudo ufw allow from {net} to any port {out.get('port')} proto tcp")
+        bridge=out.get('ponte_audio') or {}
+        if out.get('enabled'):
+            parts=[]
+            if 'som' in bridge:parts.append(f"o PC2 ({bridge['som']['cliente']}) está ouvindo o som daqui há {bridge['som']['segundos']//60} min")
+            if 'microfone' in bridge:parts.append(f"o microfone do PC2 está chegando em voz_do_pc2 há {bridge['microfone']['segundos']//60} min")
+            lines.append('Ponte de áudio (sem SonoBus): '+('; '.join(parts) if parts else 'nenhum painel do PC2 conectado agora')+'.')
         self.lan_info.setText('\n'.join(lines))
     def lan_command(self):
         out=self.lan_state or {};address=(out.get('addresses') or ['IP-DO-PC1'])[0]
@@ -2049,8 +2233,8 @@ class Central(LiveASRClient,QMainWindow):
         event.ignore()
         if self.closing or self.shutdown_pending:return
         if self.ui_only_smoke:self.finish_window_only();return
-        # Painel do PC2: fechar a janela não encerra a Central nem as entidades do PC1.
-        if self.remote_panel():self.finish_window_only();return
+        # 07/11 (pedido humano): fechar o painel do PC2 fecha também a Central do PC1, com a opção de fechar só esta janela.
+        if self.remote_panel():self.close_remote_panel();return
         if QMessageBox.question(self,'Fechar o projeto',
                 'Encerrar a Central, os orbes e Hoshino, Lilith e Alistair?\n'
                 'O projeto aguardará o encerramento seguro dos trabalhos. Memórias e arquivos salvos serão preservados.\n'
@@ -2066,6 +2250,10 @@ class Central(LiveASRClient,QMainWindow):
         for timer in (self.state_timer,self.audio_timer,self.detail_timer,self.focus_timer,self.chat_stream_timer):timer.stop()
         self.centralWidget().setEnabled(False);self.notice.setText('Encerrando com segurança… A janela fechará após confirmação.');self.shutdown_timer.start()
         def accepted(out):
+            if out is None and getattr(self,'refused_since',None):
+                # 07/11: a Central já tinha sido encerrada (pelo PC2); não há recibo novo a esperar.
+                self.notice.setText('A Central já estava fechada; esta janela fecha agora.')
+                QTimer.singleShot(500,self.finish_window_only);return
             if out is None:self.notice.setText('Pedido de encerramento não confirmado. Verificando o recibo, sem repetir o pedido…')
         self.request('control/shutdown',{'confirm':True},callback=accepted)
     def poll_shutdown(self):
@@ -2092,6 +2280,37 @@ class Central(LiveASRClient,QMainWindow):
     def shutdown_failed(self,message):
         self.shutdown_timer.stop();self.shutdown_pending=False;self.centralWidget().setEnabled(True);self.notice.setText(message);self.state_timer.start();self.chat_stream_timer.start()
         QMessageBox.warning(self,'Encerramento não concluído',message)
+    def ask_remote_close(self):
+        box=QMessageBox(self);box.setWindowTitle('Fechar');box.setIcon(QMessageBox.Question)
+        box.setText('Fechar a Central do PC1 também?')
+        box.setInformativeText('“Fechar tudo” encerra com segurança a Central do PC1 e Hoshino, Lilith e Alistair, como o botão '
+                               'de fechar de lá. “Fechar só esta janela” deixa o PC1 e as entidades funcionando.')
+        tudo=box.addButton('Fechar tudo',QMessageBox.AcceptRole);so=box.addButton('Fechar só esta janela',QMessageBox.DestructiveRole)
+        box.addButton('Cancelar',QMessageBox.RejectRole);box.setDefaultButton(tudo);box.exec_()
+        return 'tudo' if box.clickedButton() is tudo else 'so' if box.clickedButton() is so else None
+    def close_remote_panel(self):
+        choice=self.ask_remote_close()
+        if choice=='so':self.finish_window_only();return
+        if choice!='tudo':return
+        self.remote_shutdown_at=time.time();self.centralWidget().setEnabled(False)
+        self.notice.setText('Pedindo à Central do PC1 que encerre com segurança… esta janela fecha junto.')
+        def accepted(out):
+            if out is None:
+                self.remote_shutdown_at=None;self.centralWidget().setEnabled(True)
+                self.notice.setText('A Central do PC1 não confirmou o encerramento. Nada foi fechado.')
+        self.request('control/shutdown',{'confirm':True},callback=accepted)
+    def close_with_central(self,why):
+        if self.closing:return
+        self.notice.setText(why);QTimer.singleShot(800,self.finish_window_only)
+    def track_remote_central(self,out):
+        """Porta da Central recusando por 10 s (ou logo após pedir o encerramento) = Central fechada; a janela fecha junto.
+        07/11: vale no PC1 também. Fechada pelo painel do PC2, a janela do PC1 ficava aberta e depois não fechava mais."""
+        if not isinstance(out,dict) or self.closing:return
+        if not out.get('refused'):self.refused_since=None;return
+        now=time.monotonic();self.refused_since=getattr(self,'refused_since',None) or now
+        if self.shutdown_pending:return  # o próprio encerramento confere o recibo
+        if getattr(self,'remote_shutdown_at',None) or now-self.refused_since>=10:
+            self.close_with_central('A Central foi fechada; esta janela fecha junto.')
     def finish_window_only(self):
         """Local cleanup after verified shutdown, or explicit offline UI smoke."""
         self.shutdown_timer.stop()
@@ -2099,6 +2318,7 @@ class Central(LiveASRClient,QMainWindow):
         self.volume_timer.stop()
         self.stop_hotkey()
         self.stop_capture(False);self.stop_voice();self.report_focus(True)
+        if getattr(self,'pc2_bridge',None) is not None:self.pc2_bridge_timer.stop();self.pc2_bridge.parar()
         for identifier in list(self.asr_jobs):
             if identifier!='pending':self.request('audio/cancel',{'id':identifier},quiet=True)
         self.closing=True;self.asr_waiting.clear();self.state_timer.stop();self.audio_timer.stop();self.detail_timer.stop();self.focus_timer.stop();self.chat_stream_timer.stop();self.hide()
@@ -2113,7 +2333,7 @@ def main():
     if args.verify:print('QtWidgets nativo disponível; sem navegador/captura/backend iniciado.');return 0
     if args.smoke_seconds is not None and not 1<=args.smoke_seconds<=30:raise ValueError('Ensaio de UI entre 1 e 30 segundos.')
     app=QApplication(['hoshino-e-lilith','-name','hoshino-e-lilith']);app.setQuitOnLastWindowClosed(False);app.setApplicationName('hoshino-e-lilith')
-    app.setApplicationDisplayName('Hoshino · Lilith · Alistair');app.setDesktopFileName('hoshino-e-lilith');app.setWindowIcon(QIcon(str(args.root/'desktop/hoshino-e-lilith.svg')))
+    app.setApplicationDisplayName('Central');app.setDesktopFileName('hoshino-e-lilith');app.setWindowIcon(QIcon(str(args.root/'desktop/hoshino-e-lilith.svg')))
     socket_path=str(args.root/'compartilhado/runtime/launcher/native-ui.sock');socket=QLocalSocket();socket.connectToServer(socket_path)
     if socket.waitForConnected(250):socket.write(json.dumps({'entity':args.entity}).encode());socket.waitForBytesWritten(300);socket.disconnectFromServer();return 0
     lock_path=args.root/'compartilhado/runtime/launcher/native-ui.lock';lock_path.parent.mkdir(parents=True,exist_ok=True)

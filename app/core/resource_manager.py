@@ -534,10 +534,20 @@ def thinking_for_cycle(messages):
             and ('?' in text or re.search(r'\b(?:de onde|por que|como|o que)\b', normalized))))
     sobre_ela = bool(re.search(r'\b(?:seu|sua|seus|suas)\b', normalized)
                      and not re.search(r'\b(?:meu|minha|meus|minhas|eu)\b', normalized))  # "qual é seu nome?"
+    # Só pergunta de pessoa: o texto interno do despertar/iniciativa tem "quando", "qual", "onde" (07/11, teste de uso).
+    espontaneo = bool(cycle and cycle.get('spontaneous'))
     factual_question = bool(getattr(config, 'RACIOCINIO_EM_FATOS', False) and purpose == 'conversation'
-                            and len(text) <= 600 and not sobre_ela and _PERGUNTA_DE_FATO.search(normalized))
+                            and not espontaneo and len(text) <= 600 and not sobre_ela
+                            and _PERGUNTA_DE_FATO.search(normalized))
+    # 12/11 (medição em runtime/ensaios/acao-minecraft-20261112): em pedido de ação ("conecte", "abre", "cria") os
+    # pesos treinados anunciavam "vou conectar" e não chamavam a ferramenta; com raciocínio, 4 de 5 já chamam no
+    # primeiro passo (0 de 5 sem). Custa alguns segundos só nesses turnos.
+    action_request = False
+    if purpose == 'conversation' and not espontaneo and len(text) <= 600:
+        from core import conferencia
+        action_request = conferencia.pede_acao(text)
     needs_reasoning = (purpose in {'reflection', 'deep_reflection', 'task', 'compaction'}
-                      or factual_question
+                      or factual_question or action_request
                       or bool(cycle and cycle['task'])
                       or philosophical_question
                       or len(text) > 1200
@@ -548,6 +558,7 @@ def thinking_for_cycle(messages):
                           r'jurid\w*|financ\w*|apague|exclua|remova)\b', normalized)))
     enabled = bool(config.THINKING and needs_reasoning)
     reason = ('disabled_by_config' if not config.THINKING else 'factual_question' if enabled and factual_question
+              else 'action_request' if enabled and action_request
               else 'reasoning_required' if enabled else 'routine_conversation')
     diagnostics.emit('executor.thinking_selected', entity=config.ENTIDADE_ID,
                      enabled=enabled, reason=reason, purpose=purpose)

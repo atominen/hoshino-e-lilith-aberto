@@ -380,6 +380,15 @@ async def run(criteria,cp,*,ask,execute,observe,persist,allowed,validate,limit=1
         previous=cp['failures'].get(signature)
         if previous and not (previous.get('precondition') and previous.get('ground')!=conditions):error='Chamada falhou sem mudança dos pré-requisitos; escolha outra abordagem.'
         if tool=='__done__':error='O inventário/recibos ainda não satisfazem o objetivo; fala não é conclusão.'
+        if not error and tool=='registrar_procedimento':
+            from core.minecraft_cognition import registration_cooldown
+            if registration_cooldown(cp):
+                error=('Você registrou um procedimento há poucos passos; registre de novo depois de conquistar algo '
+                       'novo do objetivo.')
+        if not error and tool=='minecraft_chat' and state.get('onlinePlayers')==[]:
+            # 12/11 (humano): sem mais ninguém no servidor, a fala no chat não tem quem leia nem responda.
+            error=('Só você está no servidor agora; ninguém vai ler o chat. Descubra pelo mundo '
+                   '(percepção, procurar, explorar) ou pesquise.')
         last=cp.get('last_success') or {}
         if not error and last.get('signature')==signature and last.get('observed')==_observed(state,cp):
             error='Essa mesma chamada acabou de dar certo e nada mudou no mundo observado; repeti-la não traz nada novo. Escolha o próximo passo.'
@@ -429,6 +438,155 @@ async def run(criteria,cp,*,ask,execute,observe,persist,allowed,validate,limit=1
         persist(cp)
         if finished(criteria,cp,after):return end('completed','Critérios conferidos no mundo.',after)
     return end('paused','Orçamento do ciclo atingido; tarefa e recibos preservados.')
+
+# 12/11 (pedido humano: "o servidor está aberto, pode entrar e jogar por conta própria; o que fazer lá você decide" e
+# "deixar ela lá sozinha prosseguindo"): o pedido aberto não tinha critério conferível e virava uma tarefa genérica
+# encerrada depois de uma consulta. No modo livre ELA escolhe, um de cada vez, um objetivo que o ciclo observado sabe
+# conferir no mundo; concluído, escolhe o próximo. O endereço vem da pessoa; a escolha e o motivo são dela.
+_LIVRE = re.compile(r'\b(?:por conta propria|voce decide|fazer la voce decide|(?:jogue|jogar|joga|brinque|brincar)'
+                    r'(?: la)? sozinha|modo livre|do seu jeito|como (?:voce )?quiser|livremente|a vontade)\b')
+_HOST_PORTA = re.compile(r'\b(\d{1,3}(?:\.\d{1,3}){3})\s*:\s*(\d{2,5})\b')
+# id → (frase na gramática de targets(), faixa de quantidade ou None, rótulo mostrado a ela)
+FREE_GOALS = {
+    'bancada': ('Fabrique uma bancada.', None, 'fabricar uma bancada'),
+    'picareta_madeira': ('Fabrique uma picareta de madeira.', None, 'fabricar uma picareta de madeira'),
+    'picareta_pedra': ('Fabrique uma picareta de pedra.', None, 'fabricar uma picareta de pedra'),
+    'picareta_ferro': ('Fabrique uma picareta de ferro.', None, 'fabricar uma picareta de ferro'),
+    'picareta_diamante': ('Fabrique uma picareta de diamante.', None, 'fabricar uma picareta de diamante'),
+    'forno': ('Fabrique e coloque um forno.', None, 'fabricar e colocar um forno'),
+    'lingotes_ferro': ('Consiga {n} lingotes de ferro.', (1, 64), 'conseguir N lingotes de ferro (1–64)'),
+    'diamantes': ('Consiga {n} diamantes.', (1, 16), 'conseguir N diamantes (1–16)'),
+    'arco': ('Consiga um arco.', None, 'conseguir um arco'),
+    'flechas': ('Consiga {n} flechas.', (1, 64), 'conseguir N flechas (1–64)'),
+    'carnes': ('Consiga {n} carnes assadas de animais, iguais ou diferentes.', (1, 64),
+               'conseguir N carnes assadas, de qualquer animal (1–64)'),
+    'kit_ferro': ('Fabrique o kit completo de ferro.', None,
+                  'fabricar e vestir o kit completo de ferro (armadura, espada, picareta, machado e pá)'),
+    'armadura_diamante': ('Fabrique a armadura completa de diamante.', None,
+                          'fabricar e vestir a armadura completa de diamante'),
+    'mob': ('Mate um mob qualquer em sobrevivência, sem atacar jogadores.', None, 'derrotar um mob (nunca jogadores)'),
+}
+FREE_GOALS_PER_TURN = 6
+
+
+def free_play(text):
+    """Pedido de jogar livre no Minecraft → {'host','port','version'} ou {'lan': True}; senão None."""
+    t = intent.normalizar(text)
+    if 'minecraft' not in t or not _LIVRE.search(t) or targets(text):
+        return None
+    version = re.search(r'\bversao\s*:?\s*(\d+(?:\.\d+){2})\b', t)
+    address = _HOST_PORTA.search(t)
+    host_m = re.search(r'\bhost\s*:?\s*(\d+(?:\.\d+){3})\b', t)
+    port_m = re.search(r'\bporta\s*:?\s*(\d{2,5})\b', t)
+    host = address[1] if address else (host_m[1] if host_m else None)
+    port = address[2] if address else (port_m[1] if port_m else None)
+    if not host:
+        return {'lan': True, 'version': version[1] if version else '1.16.5'}
+    port = int(port) if port else 25565
+    if not 1 <= port <= 65535:
+        return None
+    return {'host': host, 'port': port, 'version': version[1] if version else '1.16.5'}
+
+
+def free_goal_text(free, goal, quantity, username):
+    """Objetivo na gramática de targets(): o endereço da pessoa e o objetivo escolhido por ela."""
+    if goal not in FREE_GOALS or not re.fullmatch(r'[A-Za-z0-9_]{3,16}', str(username or '')):
+        raise ValueError('MINECRAFT_FREE_GOAL_INVALID')
+    sentence, bounds, _ = FREE_GOALS[goal]
+    if bounds:
+        lo, hi = bounds
+        try:
+            n = int(quantity)
+        except (TypeError, ValueError):
+            n = min(hi, max(lo, 8))
+        sentence = sentence.format(n=max(lo, min(hi, n)))
+    if free.get('lan'):
+        prefix = f'Minecraft: conecte {username} ao mundo LAN já aberto. '
+    else:
+        prefix = (f"Minecraft: conecte {username} ao servidor já aberto em host {free['host']}, porta {free['port']}, "
+                  f"versão {free.get('version') or '1.16.5'} e auth offline. ")
+    return prefix + sentence
+
+
+def free_goal_done(free, goal, quantity, username, state) -> bool:
+    """O inventário/equipamento observado já cumpre o objetivo? (12/11: escolheu "arco" com um arco na mochila; o
+    ciclo achou o objetivo pronto antes de agir e a conclusão, que exige recibo de ação, derrubou o modo livre.)
+    Usa a mesma conta de `remaining`, com checkpoint novo: fabricar, colocar e derrotar nunca contam como já feitos."""
+    if not isinstance(state, dict) or state.get('connected') is not True:
+        return False
+    text = free_goal_text(free, goal, quantity, username)
+    criteria = targets(text)
+    return not any(remaining(criteria, initial(text, criteria), state).values())
+
+
+def free_goal_owned(free, goal, username, state) -> bool:
+    """Objetivo de fabricar (sem colocar) cujo item ela já tem na mochila ou vestido: outro não acrescenta nada.
+    12/11: escolheu "picareta de pedra" de novo com uma na mochila e passou 10 min sem concluir nada."""
+    if not isinstance(state, dict) or state.get('connected') is not True:
+        return False
+    criteria = targets(free_goal_text(free, goal, 1, username))
+    if not criteria.get('crafted') or criteria.get('placed'):
+        return False
+    have = inventory(state.get('inventory'))
+    for item in (state.get('equipment') or {}).values():
+        if isinstance(item, dict) and item.get('name'):
+            have[item['name']] = have.get(item['name'], 0) + 1
+    return all(have.get(k, 0) >= n for k, n in criteria['crafted'].items())
+
+
+def free_goal_have(free, goal, username, state):
+    """Quanto ela já tem de um objetivo com quantidade (N flechas, N lingotes…); None para os outros."""
+    if FREE_GOALS[goal][1] is None or not isinstance(state, dict) or state.get('connected') is not True:
+        return None
+    criteria = targets(free_goal_text(free, goal, 1, username))
+    counts = inventory(state.get('inventory'))
+    total = sum(counts.get(k, 0) for k in criteria['inventory'])
+    total += sum(counts.get(i, 0) for g in (criteria.get('groups') or {}) for i in GROUPS[g])
+    return total
+
+
+def free_menu(state=None, free=None, username=None):
+    """Objetivos que ela pode escolher agora: os já cumpridos saem; nos de quantidade, quanto ela já tem."""
+    menu = {}
+    for goal, (_, bounds, label) in FREE_GOALS.items():
+        if state is not None and free is not None:
+            if bounds is None and (free_goal_done(free, goal, None, username, state)
+                                   or free_goal_owned(free, goal, username, state)):
+                continue
+            have = free_goal_have(free, goal, username, state)
+            if have is not None:
+                if have >= bounds[1]:
+                    continue
+                label = f'{label}; você já tem {have}, então N precisa ser maior que {have}' if have else label
+        menu[goal] = label
+    return menu
+
+
+def free_state_summary(state):
+    """O que ela vê para escolher: conexão, vida, fome, posição, inventário e quem mais está no servidor."""
+    if not isinstance(state, dict) or state.get('connected') is not True:
+        return {'conectada': False, 'nota': 'Ainda fora do servidor; o inventário aparece depois de entrar.'}
+    return {'conectada': True, 'vida': state.get('health'), 'fome': state.get('food'),
+            'posicao': state.get('position'), 'inventario': inventory(state.get('inventory')),
+            **({'jogadores_online': state['onlinePlayers']} if isinstance(state.get('onlinePlayers'), list) else {})}
+
+
+_FREE_SQL = ('INSERT INTO conversation_task_game_states(task_id,payload,updated_at) VALUES(?,?,?) '
+             'ON CONFLICT(task_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at')
+
+
+def load_free(parent_id):
+    _schema()
+    row = bd.um('SELECT payload FROM conversation_task_game_states WHERE task_id=?', ('livre:' + str(parent_id),),
+                strict=True)
+    data = json.loads(row['payload']) if row else None
+    return data if isinstance(data, dict) and data.get('version') == 1 else None
+
+
+def save_free(parent_id, data):
+    _schema()
+    bd.executar(_FREE_SQL, ('livre:' + str(parent_id), json.dumps(data, ensure_ascii=False), bd.agora()), strict=True)
+
 
 def finish_task(task,criteria,cp,state):
     if cp.get('pending') or not finished(criteria,cp,state):raise ValueError('MINECRAFT_GOAL_NOT_VERIFIED')

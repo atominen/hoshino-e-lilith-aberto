@@ -148,40 +148,96 @@ def _indexar(*args):
 # Conhecimento em frase (fato, regra, relação, confiança, preferência...)
 # ---------------------------------------------------------------------------
 
-FONTES_REVISAVEIS = ("escriba_llm",)
+# 11/11: bronze (o que a pessoa disse de passagem, guardado pelo revisor como "passageira") também pode ser
+# substituído: quando ela repete como fato durável, a anotação durável toma o lugar em vez de ser descartada.
+FONTES_REVISAVEIS = ("escriba_llm", "lembranca_bronze")
 
 
-def semelhantes(conteudo: str, limite: int = 3, *, fontes=FONTES_REVISAVEIS) -> list[dict]:
-    """Anotações ativas parecidas com ``conteudo``, só das ``fontes`` dadas, mais parecida primeiro.
+def semelhantes(conteudo: str, limite: int = 3, *, fontes=None, tipo: str = "", chave: str = "",
+                rotulo: str = None, sujeito: str = None) -> list[dict]:
+    """Anotações ativas para o revisor de memória comparar com ``conteudo``, mais relevante primeiro.
 
-    Para o revisor de memória (07/11) comparar uma anotação nova com as já guardadas. Só leitura: não marca acesso
-    (não é lembrança usada numa resposta). Parecida = palavras em comum ou proximidade no índice vetorial; quem
-    decide se é a mesma coisa é o revisor, então aqui o filtro é largo."""
+    07/11: parecida = palavras em comum ou proximidade no índice vetorial; quem decide se é a mesma coisa é o
+    revisor, então o filtro é largo. 11/11 (pedido humano, "a memória ficou poluída"):
+    - vem de todas as fontes (regra, pessoa, bronze, escriba). Antes só as do escriba-modelo apareciam, e o revisor
+      aprovou como "nova" a repetição de duas anotações que a regra tinha acabado de gravar no mesmo turno;
+    - ``sujeito``: só anotações sobre a mesma pessoa (``sujeito_id``/``autor_id`` das evidências). Sem isso, o "gosto
+      de café" de uma pessoa parecia "igual" ao de outra e o da segunda sumia. Linha antiga sem autoria entra;
+    - as parecidas vêm primeiro (as do mesmo rótulo na frente); as do mesmo rótulo sem palavra em comum só ocupam as
+      vagas que sobrarem, para nunca empurrar a repetição de verdade para fora das três;
+    - o rótulo é calculado do texto na hora (uma anotação editada na Central não fica com o rótulo velho);
+    - ``substituivel``: só escriba-modelo e bronze. As outras o revisor só vê.
+    Só leitura: não marca acesso (não é lembrança usada numa resposta). ``fontes`` restringe as origens."""
+    from memory import rotulos
     conteudo = (conteudo or "").strip()
     limite = max(0, min(10, int(limite)))
-    fontes = tuple(fontes or ())
-    if not conteudo or not limite or not fontes:
+    if not conteudo or not limite:
         return []
+    fontes = tuple(fontes) if fontes else None
     conn = _conn()
     try:
-        linhas = conn.execute(f"SELECT id, type, content FROM memories WHERE status='active' AND source IN "
-                              f"({','.join('?' for _ in fontes)})", fontes).fetchall()
+        _garantir_rotulo(conn)
+        sql = "SELECT id, type, content, source, chave, links FROM memories WHERE status='active'"
+        args = ()
+        if fontes:
+            sql += f" AND source IN ({','.join('?' for _ in fontes)})"
+            args = fontes
+        linhas = conn.execute(sql, args).fetchall()
     finally:
         conn.close()
     if not linhas:
         return []
+    alvo = rotulo if rotulos.valido(rotulo) else rotulos.rotular(conteudo, tipo, chave)
+    comparavel = alvo in rotulos.COMPARAVEIS
     distancias = {r["id"]: r.get("distancia") for r in vetor.buscar("conhecimento", conteudo, 30)}
-    notas = []
+    parecidas, so_rotulo = [], []
     chaves = _tokens(conteudo) - GENERICAS_REVISAO
-    for mem_id, tipo, texto in linhas:
+    for mem_id, tipo_antigo, texto, origem, chave_antiga, links in linhas:
+        if sujeito and not _do_sujeito(links, sujeito):
+            continue
         outras = _tokens(texto) - GENERICAS_REVISAO
         lexical = len(chaves & outras) / len(chaves | outras) if chaves and outras else 0.0
         d = distancias.get(mem_id)
         semantica = 1.0 / (1.0 + d) if isinstance(d, (int, float)) and math.isfinite(d) and d >= 0 else 0.0
+        dele = rotulos.rotular(texto, tipo_antigo, chave_antiga)
+        mesmo = comparavel and dele == alvo
+        nota = max(lexical, semantica)
+        registro_ = dict(id=mem_id, tipo=tipo_antigo, conteudo=texto, fonte=origem, rotulo=dele,
+                         mesmo_rotulo=mesmo, substituivel=origem in FONTES_REVISAVEIS)
         if lexical >= LIMIAR_SEMELHANTE_LEXICO or semantica >= LIMIAR_SEMELHANTE_VETOR:
-            notas.append((max(lexical, semantica), dict(id=mem_id, tipo=tipo, conteudo=texto)))
-    notas.sort(key=lambda n: -n[0])
-    return [registro_ for _, registro_ in notas[:limite]]
+            parecidas.append(((not mesmo, -nota), registro_))
+        elif mesmo:
+            so_rotulo.append(((-nota,), registro_))
+    parecidas.sort(key=lambda n: n[0])
+    so_rotulo.sort(key=lambda n: n[0])
+    return [registro_ for _, registro_ in (parecidas + so_rotulo)[:limite]]
+
+
+def _do_sujeito(links, sujeito: str) -> bool:
+    """A anotação é sobre ``sujeito``? Sem autoria registrada (linha antiga), conta como sim."""
+    try:
+        evidencias = json.loads(links or "[]")
+    except (ValueError, TypeError):
+        return True
+    ids = {str(e.get("sujeito_id") or e.get("autor_id")) for e in evidencias
+           if isinstance(e, dict) and (e.get("sujeito_id") or e.get("autor_id"))}
+    return not ids or str(sujeito) in ids
+
+
+_COM_ROTULO = set()
+
+
+def _garantir_rotulo(conn) -> None:
+    """Banco antigo sem a coluna ``rotulo`` (11/11) ganha a coluna aqui, numa conexão própria e fora de transação
+    alheia; o resto do esquema é do init_db (COLUNAS_NOVAS)."""
+    if DB_PATH in _COM_ROTULO:
+        return
+    colunas = {linha[1] for linha in conn.execute("PRAGMA table_info(memories)")}
+    if colunas and "rotulo" not in colunas:
+        conn.execute("ALTER TABLE memories ADD COLUMN rotulo TEXT")
+        conn.commit()
+    if colunas:
+        _COM_ROTULO.add(DB_PATH)
 
 
 # "A pessoa ..." está em quase toda anotação; sozinha não faz duas parecidas.
@@ -191,7 +247,8 @@ LIMIAR_SEMELHANTE_VETOR = 0.5  # calibrado 07/11 nos pares da avaliação (ensai
 
 
 def remember(conteudo: str, entidades=None, tipo: str = "fato", confianca: float = 0.7,
-             chave: str = None, fonte: str = "conversa", evidencias=None, conexao=None, substituir=()) -> str:
+             chave: str = None, fonte: str = "conversa", evidencias=None, conexao=None, substituir=(),
+             rotulo: str = None) -> str:
     """Registra algo aprendido. Só substitui registro anterior em conflito real.
 
     ``substituir``: ids que o revisor de memória apontou como repetidos ou velhos diante deste registro. Só vale para
@@ -205,9 +262,15 @@ def remember(conteudo: str, entidades=None, tipo: str = "fato", confianca: float
     confianca = confianca_valida(confianca, 0.7)
     evidencias = _evidencias_turno(evidencias)
 
+    from memory import rotulos
+    rotulo = rotulo if rotulos.valido(rotulo) else rotulos.rotular(conteudo, tipo, chave)
+
     conn = conexao if conexao is not None else _conn(escrita=True)
     try:
         cur = conn.cursor()
+        # 11/11: nada de ALTER aqui (pode estar dentro da transação de quem chamou); sem a coluna, grava sem rótulo e
+        # semelhantes() calcula do texto.
+        com_rotulo = "rotulo" in {linha[1] for linha in cur.execute("PRAGMA table_info(memories)")}
 
         # Só uma chave explícita identifica o atributo a atualizar. Similaridade
         # lexical não distingue manhã/noite, afirmação/negação ou condições.
@@ -254,13 +317,18 @@ def remember(conteudo: str, entidades=None, tipo: str = "fato", confianca: float
                 substituidos += revisados
 
         mem_id = f"mem-{uuid.uuid4().hex[:12]}"
-        cur.execute(
-            """INSERT INTO memories (id, type, created_at, valid_from, source, confidence,
-                                     importance, content, entities, links, supersedes, chave, status)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')""",
-            (mem_id, tipo, _now(), _now(), fonte, confianca, 0.5, conteudo,
-             json.dumps(entidades, ensure_ascii=False), json.dumps(evidencias if evidencias is not None else [], ensure_ascii=False),
-             json.dumps(substituidos), chave))
+        valores = (mem_id, tipo, _now(), _now(), fonte, confianca, 0.5, conteudo,
+                   json.dumps(entidades, ensure_ascii=False),
+                   json.dumps(evidencias if evidencias is not None else [], ensure_ascii=False),
+                   json.dumps(substituidos), chave)
+        if com_rotulo:
+            cur.execute("""INSERT INTO memories (id, type, created_at, valid_from, source, confidence, importance, content,
+                                                 entities, links, supersedes, chave, status, rotulo)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)""", valores + (rotulo,))
+        else:
+            cur.execute("""INSERT INTO memories (id, type, created_at, valid_from, source, confidence, importance, content,
+                                                 entities, links, supersedes, chave, status)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')""", valores)
         if conexao is not None:
             return f"Registrado [{tipo}]: {conteudo}"  # chamador confirma a transação inteira
         conn.commit()
@@ -673,7 +741,7 @@ def recall(query: str, limit: int = 5, *, estruturado=False) -> list:
         for (mid, tipo, conteudo, conf, criado, usos, _chave, fonte, links, entities, person_id) in memorias:
             if not audience.visible(conn,'memories',dict(id=mid,type=tipo,links=links)):continue
             r = registro(dict(id=mid, type=tipo, content=conteudo, confidence=conf, created_at=criado, source=fonte, links=links))
-            tier,bonus=priority('memories',dict(id=mid,type=tipo,links=links,entities=entities,person_id=person_id))
+            tier,bonus=priority('memories',dict(id=mid,type=tipo,links=links,entities=entities,person_id=person_id,source=fonte))
             r['importance']=tier
             candidatos.append({"id": mid, "texto": formatar_registro(r), "conf": r['confianca'], "registro": r,
                                "priority_bonus":bonus,

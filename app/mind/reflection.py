@@ -52,7 +52,7 @@ def episodios_desde_ultima() -> int:
     linha = bd.um('SELECT SUM(CASE WHEN project_epoch(created_at) <= ? '
                   'AND (? IS NULL OR project_epoch(created_at) > ?) THEN 1 ELSE 0 END) AS n, '
                   'SUM(CASE WHEN project_epoch(created_at) IS NULL THEN 1 ELSE 0 END) AS invalidos '
-                  "FROM episodes WHERE source NOT IN ('initiative_checkpoint','initiative_observation') OR source IS NULL",
+                  "FROM episodes WHERE source NOT IN ('initiative_checkpoint','initiative_observation','tool_receipt') OR source IS NULL",
                   (agora, corte, corte), strict=True)
     if linha and linha['invalidos']:
         history._clock_warning('reflection.episodes', 'invalid_episode_time')
@@ -81,7 +81,9 @@ def material(limite: int = 15) -> list:
     corte, agora = limites
     return bd.consultar(
         "SELECT id, created_at, what_happened, action_taken, result, source, context FROM episodes WHERE status='active' "
-        "AND (source NOT IN ('initiative_checkpoint','initiative_observation') OR source IS NULL) "
+        # 07/11: o recibo mecânico de ferramenta ("Registro automático de ação… Não há confirmação independente") virava
+        # "conclusão" minha sobre recibos: texto do sistema, não experiência.
+        "AND (source NOT IN ('initiative_checkpoint','initiative_observation','tool_receipt') OR source IS NULL) "
         "AND project_epoch(created_at) <= ? AND (? IS NULL OR project_epoch(created_at) > ?) "
         "ORDER BY project_epoch(created_at) DESC, id LIMIT ?", (agora, corte, corte, limite), strict=True)
 
@@ -121,7 +123,11 @@ def prompt_reflexao(episodios: list = None) -> str:
     episodios = episodios if episodios is not None else material()
     if not episodios:
         return ""
-    linhas = [json.dumps(e,ensure_ascii=False) for e in episodios]
+    # 07/11: a nota fixa do sistema no resultado também virava lição; o que conta é o que aconteceu.
+    limpos = [{k: v for k, v in dict(e).items()
+               if not (k == 'result' and str(v).startswith('resposta registrada; efeitos das ferramentas'))}
+              for e in episodios]
+    linhas = [json.dumps(e,ensure_ascii=False) for e in limpos]
     return PROMPT.format(episodios="\n".join(linhas))
 
 

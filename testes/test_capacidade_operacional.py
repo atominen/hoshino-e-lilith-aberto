@@ -297,7 +297,9 @@ def main():
     check(pasta_intent.ferramenta_principal == "abrir_pasta" and pasta_intent.parametros_sugeridos.get("caminho") == "~/downloads",
           f"extração da pasta incorreta: {pasta_intent}")
 
-    check(nomes("oi tudo bem") == dispatch.NUCLEO, "conversa simples deve receber somente o núcleo atual")
+    # 11/11: Hoshino e Lilith não recebem de fábrica as ferramentas que mostram as outras entidades e seus estados.
+    check(nomes("oi tudo bem") == dispatch.NUCLEO - {"entidades_status", "recursos_status"},
+          "conversa simples deve receber somente o núcleo atual")
     check(all(not capabilities.info(n).mutates for n in nomes("oi tudo bem")), "ação mutável exposta sem intenção")
     multi = nomes("crie um arquivo teste.txt e depois execute um script")
     check("workspace" in multi and "execute_command" in multi, f"pedido composto perdeu uma etapa: {multi}")

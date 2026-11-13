@@ -222,7 +222,7 @@ def prepare_from_dataset(home: Path, entity: str, dataset_id: str, limit: int=20
                 # Seed Alistair possui variacoes de cada caso-base: nao
                 # transformar as variacoes em evidencias distintas em nenhum modo.
                 case = source.get('case')
-                if (mode in ('heavy_10k','max_dynamic') or dataset_id.startswith('datasets-alistair-seed:') or dataset_id=='pacote_identidade_v5:alistair') and isinstance(case,int) and not isinstance(case,bool):
+                if (mode in ('heavy_10k','max_dynamic') or dataset_id.startswith('datasets-alistair-seed:') or dataset_id==__import__('laboratorio.corpus_atual',fromlist=['dataset_id']).dataset_id('alistair')) and isinstance(case,int) and not isinstance(case,bool):
                     identity = ('case',case)
                 else:
                     identity = ('example',json.dumps(clean,ensure_ascii=False,sort_keys=True))
@@ -461,8 +461,11 @@ def uncertain_delivery_claim(text):
         judged=re.search(r'\b(?:seria|é|fica)\s+(?:uma?\s+)?(?:suposição|erro|arriscad\w*|precipitad\w*|insegur\w*)\b|'
                          r'\bsem base\b|\bnão (?:é|seria|faz) (?:seguro|sentido)\b|\bàs cegas\b|\bpode (?:duplicar|repetir)\b',after)
         # "Eu verificaria no destino antes de reenviar" / "Reenvio depois de confirmar que não chegou".
-        checked_before=re.search(r'\b(?:verific|confirm|confer|confir|olh|cheq|chec)\w*\b.{0,80}\bantes de\s*$',clause)
-        checked_after=re.match(r'\s*(?:só\s+)?(?:depois de|após|quando)\b.{0,50}\b(?:verificar|confirmar|conferir)\b',after)
+        # 12/11: avisar/perguntar à pessoa antes também não é reenvio automático ("Vou avisar você antes de
+        # reenviar", Lilith), e o substantivo vale como o verbo ("agendo o reenvio após a confirmação", Alistair).
+        checked_before=re.search(r'\b(?:verific|confirm|confer|confir|olh|cheq|chec|avis|pergunt|consult)\w*\b'
+                                 r'.{0,80}\bantes de\s*$',clause)
+        checked_after=re.match(r'\s*(?:só\s+)?(?:depois d[aeo]|após|quando)\b.{0,50}\b(?:verific|confirm|confer)\w*',after)
         if not negated and not verified_condition and not judged and not checked_before and not checked_after:return True
     return False
 

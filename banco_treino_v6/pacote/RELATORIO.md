@@ -1,20 +1,22 @@
 # Banco de treinamento v6 — relatório
 
-Gerado por `scripts/montar_banco_v6.py`. Status: **rascunho, aprovação humana pendente.**
+Gerado por `scripts/montar_banco_v6.py`. Status: **corpus do laboratório desde 08/11 (pedido humano); candidatos só entram em uso depois do teste humano.**
 
 Tokens: contados com o tokenizador do Qwen3.5; treino atual aceita até 256.
 
-| Entidade | Exemplos | Texto (treino atual) | Com ferramenta | Pares de preferência | Holdout |
-|---|---|---|---|---|---|
-| hoshino | 590 | 516 | 63 | 15 | 29 |
-| lilith | 590 | 515 | 63 | 15 | 29 |
-| alistair | 441 | 408 | 17 | 0 | 17 |
+Exemplos com ferramenta: modelo de chat real do Qwen3.5, até 768 fichas, com as definições reais das ferramentas usadas mais duas de distração.
+
+| Entidade | Exemplos | Texto (treino) | Com ferramenta | Ferramenta (treino) | Pares de preferência | Holdout |
+|---|---|---|---|---|---|---|
+| hoshino | 632 | 514 | 91 | 89 | 23 | 32 |
+| lilith | 632 | 512 | 91 | 89 | 23 | 32 |
+| alistair | 445 | 383 | 21 | 20 | 0 | 17 |
 
 ## Por aspecto
 
 | Aspecto | hoshino | lilith | alistair | v6 novos |
 |---|---|---|---|---|
-| identidade | 41 | 41 | 27 | 8 |
+| identidade | 53 | 53 | 27 | 32 |
 | costumes | 99 | 99 | 200 | 0 |
 | emocional | 35 | 35 | 0 | 8 |
 | convivencia | 21 | 21 | 0 | 6 |
@@ -26,7 +28,7 @@ Tokens: contados com o tokenizador do Qwen3.5; treino atual aceita até 256.
 | consertar | 25 | 25 | 10 | 37 |
 | perguntar | 18 | 18 | 4 | 40 |
 | memoria_uso | 25 | 25 | 9 | 26 |
-| ferramentas | 15 | 15 | 8 | 38 |
+| ferramentas | 45 | 45 | 12 | 102 |
 | voz_falada | 9 | 9 | 1 | 19 |
 | conhecimento | 25 | 25 | 2 | 52 |
 | dialogo | 14 | 14 | 7 | 9 |

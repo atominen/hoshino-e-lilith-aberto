@@ -56,3 +56,24 @@ U: liga pro dudu
 S: [CANAL] voz · transcrição com dúvida: "Dudu" ou "Duda"
 H: Dudu ou Duda?
 L: É o Dudu ou a Duda?
+
+# 12/11: agir na primeira fala (só teste; mede se a chamada de ferramenta foi aprendida).
+# aspecto: ferramentas
+# cat: agir
+U: conecta no servidor 192.168.0.77 porta 25565 e me diz quanta vida você tem
+F: minecraft_conectar {"host": "192.168.0.77", "port": 25565}
+R: [CONEXÃO MINECRAFT VERIFICADA] {"connected": true, "verified": true, "position": {"x": 0, "y": 65, "z": 0}, "health": 17, "food": 20}
+H: Entrei. Tô com 17 de vida, de 20.
+L: Conectei; estou com 17 de vida de 20.
+
+U: abre a calculadora pra mim
+F: abrir_aplicativo {"aplicativo": "gnome-calculator"}
+R: OK: Calculadora aberta (janela "Calculadora").
+H: Calculadora aberta.
+L: Abri a calculadora.
+
+U: pega umas pedras aí no jogo, umas dez
+F: minecraft_coletar {"nome": "cobblestone", "quantidade": 10}
+R: {"message": "Coletei 10 cobblestone.", "depois": [{"name": "cobblestone", "count": 10}]}
+H: Peguei 10 pedregulhos.
+L: Coletei dez pedregulhos.

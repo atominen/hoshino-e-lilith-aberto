@@ -373,7 +373,7 @@ class RuntimeRecoveryTests(unittest.TestCase):
     def test_six_effective_hours_are_exact_and_evaluations_are_separate(self):
         from laboratorio import treinos_unificados as lab
         for entity,rels in lab.DATASETS.items():
-            for rel in (*rels,'pacote_identidade_v5/'+entity+'_holdout.jsonl'):
+            for rel in (*rels,'pacote_identidade_v6/'+entity+'_holdout.jsonl'):
                 path=self.home/rel;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('{}\n'*10)
         bench=self.home/'measured';bench.mkdir()
         (bench/'micro_result.json').write_text(json.dumps({'updates_per_optimization_hour':600,'checkpoint_bytes':[1024]}))
@@ -390,7 +390,7 @@ class RuntimeRecoveryTests(unittest.TestCase):
                 report.write_text(json.dumps({'entity':entity,'physical_reload_verified':True,
                     'adapter_sha256':versions.sha(candidate/'adapter_model.safetensors'),
                     'validation_sha256':versions.sha(self.home/lab.DATASETS[entity][1]),
-                    'holdout_sha256':versions.sha(self.home/'pacote_identidade_v5'/f'{entity}_holdout.jsonl'),
+                    'holdout_sha256':versions.sha(self.home/'pacote_identidade_v6'/f'{entity}_holdout.jsonl'),
                     'behavioral_audit':{'passed':True},'validation_loss':.9,'holdout_loss':.9,
                     'baseline':{'validation_loss':1.,'holdout_loss':1.}}))
                 report.with_suffix('.hardware.json').write_text(json.dumps({'child_exit_code':0,'pressure':[]}))
@@ -1178,6 +1178,15 @@ class V18QualityAndClockTests(unittest.TestCase):
         self.assertFalse(uncertain_delivery_claim('Reenviar às cegas pode duplicar a mensagem.'))
         self.assertFalse(uncertain_delivery_claim('Não sei se foi guardado. Confiro a caixa antes de enviar de novo.'))
         self.assertTrue(uncertain_delivery_claim('Vale tentar reenviar ou confirmar se o destino aceitou.'))
+        # Falsos positivos reais da avaliação de 12/11 (Lilith 9B e Alistair 4B).
+        self.assertFalse(uncertain_delivery_claim('Não. O resultado foi incerto. Eu não posso afirmar que o arquivo '
+                                                  'chegou. Vou avisar você antes de reenviar.'))
+        self.assertFalse(uncertain_delivery_claim('Não afirmo que entregou. Registro o envio como pendente e agendo '
+                                                  'o reenvio após a confirmação.'))
+        self.assertFalse(uncertain_delivery_claim('Te pergunto antes de reenviar.'))
+        # Continuam sendo reenvio sem conferência.
+        self.assertTrue(uncertain_delivery_claim('Reenvio agora e depois te aviso.'))
+        self.assertTrue(uncertain_delivery_claim('Reenvio após o almoço.'))
 
     def test_generic_foreign_identity_and_superficial_paraphrase_fail(self):
         from laboratorio.professor_moe import audit_proposal
@@ -1307,7 +1316,7 @@ class V18QualityAndClockTests(unittest.TestCase):
                 result=lab.long_plan(home)
             self.assertTrue(result['allowed']);spawn.assert_not_called()
             self.assertEqual([t['entity'] for t in result['tasks']],['hoshino','hoshino','lilith','lilith'])
-            self.assertEqual(result['tasks'][2]['dataset'],'pacote_identidade_v5:lilith')
+            self.assertEqual(result['tasks'][2]['dataset'],'pacote_identidade_v6:lilith')
             self.assertFalse(result['execution_started']);self.assertIsNone(result['confirm'])
 
     def test_night_authorization_cannot_bypass_prepared_plan_disk_gate(self):
@@ -1333,7 +1342,7 @@ class V18QualityAndClockTests(unittest.TestCase):
         from laboratorio import treinos_unificados as lab
         spec={'allowed':True,'options':{},'entity':'hoshino','preset':{'rank':4},
               'model':{'benchmarks':{'hoshino':{'preset':{'rank':4}}}}}
-        first={'model':'qwen35-9b','entity':'hoshino','dataset':'pacote_identidade_v5:hoshino','minutes':10,'action':'train'}
+        first={'model':'qwen35-9b','entity':'hoshino','dataset':'pacote_identidade_v6:hoshino','minutes':10,'action':'train'}
         second=dict(first,action='evaluate',candidate_from_task=0,minutes=-1)
         with tempfile.TemporaryDirectory() as tmp,patch.object(lab,'plan',return_value=spec):
             with self.assertRaises(ValueError):lab.night_create(Path(tmp),Path(tmp),{
@@ -1358,10 +1367,13 @@ class V18QualityAndClockTests(unittest.TestCase):
                 record['entity']='lilith'
                 with self.assertRaises(RuntimeError):lab.resume_night_tasks(run)
 
-    def test_central_dashboard_shortcut_reuses_existing_laboratory(self):
+    def test_central_laboratory_button_lives_only_in_its_own_tab(self):
+        # 07/11 (pedido humano): o atalho saiu da aba Entidades; a aba Laboratório Neural reutiliza o mesmo laboratório.
         source=Path(__file__).resolve().parents[2].joinpath('app/ui/central_native.py').read_text()
         dashboard=source.split('def build_entities(self):')[1].split('def build_chat(self):')[0]
-        self.assertIn('self.open_laboratory',dashboard)
+        self.assertNotIn('self.open_laboratory',dashboard)
+        laboratory=source.split('def build_laboratory(self):')[1].split('def open_laboratory(self):')[0]
+        self.assertIn('self.open_laboratory',laboratory)
 
 
 class TrainingMemoryTests(unittest.TestCase):

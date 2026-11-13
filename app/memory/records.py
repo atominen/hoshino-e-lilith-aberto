@@ -10,7 +10,23 @@ import unicodedata
 TIPOS_VALIDOS = {'observacao','interpretacao','hipotese','reflexao','inferencia','fato',
                  'regra','relacao','confianca','preferencia','propriedade','procedimento','capacidade','evento'}
 CARD_KINDS=('person','item','concept','state','structure','mode','rule','manual','relation','procedure')
-CARD_TIERS=('ferro','ouro','diamante','platina')
+# 07/11 (pedido humano): entra o bronze, sai a platina. Bronze guarda o que a pessoa me disse, mesmo passageiro.
+CARD_TIERS=('bronze','ferro','ouro','diamante')
+FONTE_BRONZE='lembranca_bronze'
+
+
+def _bronze_target(row, people):
+    """Cartão "O que <pessoa> me disse": lembranças de bronze agrupadas por quem falou."""
+    try:subjects=json.loads(row.get('entities') or '[]')
+    except (ValueError,TypeError):subjects=[]
+    subjects=[s for s in subjects if isinstance(s,str) and s.strip()] if isinstance(subjects,list) else []
+    quem=next((s.split(':',1)[1] for s in subjects if s.startswith('participante:')),'')
+    genericos={'usuario','usuário','pessoa','a pessoa','alguém','alguem','voce','você'}
+    nome=next((s for s in subjects if not s.startswith('participante:') and s.casefold() not in genericos),'')
+    explicit=row.get('person_id')
+    if explicit in people:nome=people[explicit]['nome']
+    chave=(quem or nome or 'alguem').casefold()
+    return ('bronze:'+chave,('O que '+nome+' me disse') if nome else 'O que me disseram','person','bronze')
 
 
 def card_targets(row, people, names):
@@ -19,6 +35,7 @@ def card_targets(row, people, names):
     except (ValueError,TypeError):subjects=[];meta=[]
     if not isinstance(subjects,list):subjects=[]
     title=meta.get('title') if isinstance(meta,dict) and meta.get('kind') in {'conceptual_model','knowledge_card'} else None
+    if row.get('source')==FONTE_BRONZE:return [_bronze_target(row,people)]
     explicit=row.get('person_id');targets=[]
     if explicit in people:targets=[('person:'+explicit,people[explicit]['nome'],'person','person_id')]
     elif title:targets=[('concept:'+str(row['id']),title,row.get('type') if row.get('type') in CARD_KINDS else 'concept','semantic_record')]
@@ -31,20 +48,25 @@ def card_targets(row, people, names):
     return targets or [('concept:'+str(row['id']),str(row.get('chave') or 'Conhecimento registrado'),'concept','unspecified')]
 
 
+def default_tier(card_id):
+    return 'bronze' if str(card_id).startswith('bronze:') else 'ferro'
+
+
 def card_priorities(conn):
     """Read existing settings once; bounded bonus, never evidence/confidence."""
     tables={r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    tiers=dict(conn.execute('SELECT id,tier FROM memory_card_settings')) if 'memory_card_settings' in tables else {}
+    tiers={i:('diamante' if t=='platina' else t) for i,t in conn.execute('SELECT id,tier FROM memory_card_settings')} \
+        if 'memory_card_settings' in tables else {}
     people={};names={}
-    if tiers and 'people' in tables:
+    if 'people' in tables:
         for identifier,name in conn.execute('SELECT id,nome FROM people'):
             people[identifier]={'nome':name};names.setdefault(str(name or '').casefold(),[]).append(identifier)
     def priority(table,row):
         if table=='memories':ids=[target[0] for target in card_targets(row,people,names)]
         elif table=='properties':ids=['topic:'+str(row.get('entity') or 'Assunto não identificado').casefold()]
         else:ids=[f"procedure:{row.get('id')}"]
-        tier=max((tiers.get(i,'ferro') for i in ids),key=lambda t:CARD_TIERS.index(t) if t in CARD_TIERS else 0)
-        return (tier, .02*CARD_TIERS.index(tier)) if tier in CARD_TIERS else ('ferro',0.)
+        tier=max((tiers.get(i,default_tier(i)) for i in ids),key=lambda t:CARD_TIERS.index(t) if t in CARD_TIERS else 1)
+        return (tier, .02*CARD_TIERS.index(tier)) if tier in CARD_TIERS else ('ferro',.02)
     return priority
 
 

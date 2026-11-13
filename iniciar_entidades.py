@@ -24,6 +24,11 @@ sys.path.insert(0, str(ROOT))
 from entity_paths import carregar_entidade
 from core import interentity, resource_manager, job_bus, world_state, capability_router, shutdown, diagnostics, entity_admission
 from core import central_rede, pc2_remoto
+# 11/11 (pedido humano): ponte de áudio PC1 ↔ PC2 pela própria Central, sem SonoBus nem outro app externo.
+from ui import native_ponte
+PONTE_AUDIO = native_ponte.Servidor()
+import atexit
+atexit.register(PONTE_AUDIO.encerrar)
 from core.audio_service import AudioService, MAX_INPUT_BYTES
 from core.central_control import Control, redact
 ENTIDADES = interentity.ENTITIES
@@ -456,6 +461,21 @@ class Supervisor:
         return self.shutdown_result
 
 
+# 07/11 (pedido humano): com a Central aberta no PC1 e o painel no PC2, só a última janela que recebeu foco comanda.
+# Ficam livres o que é segurança (dormir, interromper, cancelar, encerrar) e os sentidos (cópias, tela, foco, PC2).
+SO_JANELA_ATIVA = frozenset({
+    '/api/send', '/api/start', '/api/audio/transcribe', '/api/audio/test', '/api/audio/listening',
+    '/api/control/microphone', '/api/control/interface', '/api/control/audio', '/api/control/tools',
+    '/api/control/models', '/api/control/model-versions', '/api/control/model-versions/prepare', '/api/control/vram',
+    '/api/control/apis',
+    '/api/control/rede', '/api/control/password', '/api/control/memory/delete', '/api/control/knowledge',
+    '/api/control/knowledge/unlock', '/api/control/logic', '/api/control/chat/feedback', '/api/control/attachment',
+    '/api/control/import', '/api/control/import/finish', '/api/control/export', '/api/control/overlay/start',
+    '/api/control/alistair/execution', '/api/control/neural', '/api/control/native/open',
+    '/api/control/laboratory/night/start', '/api/control/laboratory/night/schedule-once',
+    '/api/control/laboratory/night/config'})
+
+
 def audio_origin(audio, entity, data):
     """Origem registrada só após o usuário revisar e enviar a transcrição."""
     ids=data.get('audio_job_ids');extra={}
@@ -501,7 +521,7 @@ def rede_state(handler):
     return dict(cfg, addresses=central_rede.addresses(), active=lan is not None,
                 active_port=lan.server_port if lan is not None else None,
                 code=central_rede.token(ROOT) if cfg['enabled'] else None,
-                apply='immediate')
+                apply='immediate', ponte_audio=PONTE_AUDIO.estado())
 
 
 def rede_save(handler, data):
@@ -631,6 +651,11 @@ def make_server(supervisor, port=8769, audio=None):
                 self.reply(403, {"error": "Abra a central pelo executável local."})
                 return
             try:
+                if url.path == '/api/control/pc2/som':
+                    # 11/11: som do PC1 para o painel do PC2, contínuo (só a porta da rede).
+                    if not getattr(self.server,'lan',False):raise PermissionError('Só o painel do PC2, pela rede, ouve o som do PC1.')
+                    PONTE_AUDIO.servir_som(self)
+                    return
                 query = {k:v[0] for k,v in parse_qs(url.query).items()}
                 if url.path == '/api/control/clipboard-attachment':
                     data, mime = control.clipboard_attachment(query.get('entity', 'hoshino'), query.get('name', ''))
@@ -658,6 +683,7 @@ def make_server(supervisor, port=8769, audio=None):
                 views['/api/control/gpu-alerts'] = control.gpu_alerts
                 views['/api/control/rede'] = lambda: rede_state(self)
                 views['/api/control/vram'] = control.vram_settings
+                views['/api/control/apis'] = control.api_settings  # 07/11: APIs de modelo e quem usa qual
                 views['/api/control/clipboard'] = control.clipboard_capture_state
                 views['/api/control/laboratory/night'] = lambda: supervisor.night or {'state':'idle'}
                 from laboratorio.rotina_noturna import config as night_config
@@ -745,6 +771,10 @@ def make_server(supervisor, port=8769, audio=None):
                 if supervisor.closing and url.path not in ('/api/audio/cancel','/api/audio/perception/stop','/api/control/shutdown'):
                     self.reply(409, {'error': 'Central em encerramento; somente diagnóstico e cancelamento estão disponíveis.'})
                     return
+                if url.path in SO_JANELA_ATIVA and not control.window_may_command(self.headers.get('X-Central-Client','')):
+                    self.reply(409, {'error': 'Esta janela está em pausa: a outra janela da Central (a última que recebeu '
+                                              'foco) está em uso. Clique nesta janela para usá-la.', 'inactive_window': True})
+                    return
                 size = int(self.headers.get("Content-Length", "0"))
                 if url.path == '/api/control/attachment':
                     query=parse_qs(url.query)
@@ -756,6 +786,11 @@ def make_server(supervisor, port=8769, audio=None):
                     if not getattr(self.server,'lan',False):raise PermissionError('Só o painel do PC2, pela rede, envia a tela.')
                     if not 0<size<=16*1024**2 or self.headers.get('Content-Type')!='application/octet-stream':raise ValueError('Print inválido/acima de 16 MiB.')
                     self.reply(200,pc2_remoto.guardar_tela(ROOT,parse_qs(url.query).get('id',[''])[0],self.rfile.read(size)))
+                    return
+                if url.path == '/api/control/pc2/microfone':
+                    # 11/11: microfone do PC2 tocado em voz_do_pc2 (microfone padrão do PC1), contínuo e chunked.
+                    if not getattr(self.server,'lan',False):raise PermissionError('Só o painel do PC2, pela rede, manda o microfone de lá.')
+                    PONTE_AUDIO.receber_microfone(self)
                     return
                 if url.path == '/api/control/clipboard':
                     # 06/11: cópia guardada sozinha (texto até 1 MiB, PNG até 8 MiB) na área compartilhada.
@@ -858,6 +893,7 @@ def make_server(supervisor, port=8769, audio=None):
                 settings['/api/control/alistair/execution/check']=control.check_alistair_execution
                 settings['/api/control/rede']=lambda data:rede_save(self,data)
                 settings['/api/control/vram']=control.save_vram
+                settings['/api/control/apis']=control.save_api
                 for route in ('/api/control/pc2/proximo','/api/control/pc2/resultado','/api/control/pc2/sentidos'):
                     settings[route]=lambda data,route=route:pc2_route(self,route,data)
                 if url.path in settings:

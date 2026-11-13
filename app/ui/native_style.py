@@ -27,6 +27,20 @@ QLineEdit,QComboBox,QSpinBox,QDoubleSpinBox { background:#1c2332; border:1px sol
 QLineEdit:focus,QComboBox:focus,QPlainTextEdit:focus { border-color:#b49bd7; }
 QComboBox QAbstractItemView { background:#222b3d; selection-background-color:#443959; }
 QPlainTextEdit,QTextBrowser,QTreeWidget { background:#151b28; border:1px solid #2c374c; border-radius:12px; padding:12px; selection-background-color:#554776; }
+QFrame#chatPanel { background:#151b28; border:1px solid #2c374c; border-radius:14px; }
+QTextBrowser#chatHistory { background:#151b28; border:0; border-radius:14px; padding:12px 14px; }
+QWidget#chatComposerArea { background:#151b28; border-bottom-left-radius:14px; border-bottom-right-radius:14px; }
+QPlainTextEdit#chatLive { background:#191f2c; border:0; border-top:1px solid #2c374c; border-radius:0; padding:8px 14px; color:#b6c4db; }
+QFrame#chatComposer { background:#1c2332; border:1px solid #354057; border-radius:14px; }
+QPlainTextEdit#chatDraft { background:#1c2332; border:0; border-radius:0; padding:4px 2px; }
+QPlainTextEdit#chatDraft:focus { border:0; }
+QPushButton#chatSend { background:#c8b3e8; color:#211b30; border:0; border-radius:16px; padding:0; min-width:32px; max-width:32px; min-height:32px; max-height:32px; font-size:17px; font-weight:700; }
+QPushButton#chatSend:hover { background:#e0cef8; }
+QPushButton#chatSend:disabled { background:#2a3245; color:#677186; }
+QPushButton#chatIcon { background:#222b3d; color:#cdd7e8; border:1px solid #35415a; border-radius:16px; padding:0; min-width:32px; max-width:32px; min-height:32px; max-height:32px; font-size:18px; }
+QPushButton#chatIcon:hover { background:#303b53; }
+QPushButton#chatIcon:disabled { color:#677186; background:#191f2b; border-color:#242b38; }
+QLabel#chatOperation { color:#8e99ae; font-size:12px; }
 QTreeWidget { alternate-background-color:#1d2535; }
 QTreeWidget::item { padding:5px 3px; }
 QHeaderView::section { background:#20293a; padding:8px; border:0; color:#b9c6dc; }

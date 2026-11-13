@@ -15,7 +15,7 @@ MODEL_ID='alistair-qwen35-4b'
 
 def paths(home:Path):
     root=home/'modelos-extras'/MODEL_ID
-    return root/'hf', root/'adapters'/'alistair-piloto',home/'pacote_identidade_v5'
+    return root/'hf', root/'adapters'/'alistair-piloto',home/__import__('laboratorio.corpus_atual',fromlist=['CORPUS']).CORPUS
 
 
 def locked(home:Path, action):

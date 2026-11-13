@@ -1367,7 +1367,7 @@ class PromptBudget(unittest.TestCase):
             task=prompting.montar_prompt_sistema(situacao='Corrija codigo.py e execute os testes.')
         self.assertIn('Eu sou',casual);self.assertIn('ESTADO AFETIVO EXISTENTE',casual)
         self.assertLess(len(casual),len(task))
-        self.assertIn('Hoshino, Lilith e Alistair',casual)
+        self.assertIn('[CONVERSA]',casual);self.assertNotIn('Lilith',casual);self.assertNotIn('Alistair',casual)  # 11/11
 
     def test_vision_partial_protocol_is_not_observation_and_latency_is_split(self):
         from tools import vision
@@ -1882,7 +1882,7 @@ class PromptBudget(unittest.TestCase):
             for rule in prompting._carregar(prompting.CONSTITUICAO_PATH).get(section,[]):
                 self.assertIn(rule,automatic)
         self.assertIn(prompting.ESCRITA_CURTO,automatic)
-        self.assertIn('CASA COMPARTILHADA',automatic)
+        self.assertIn('[CONVERSA]',automatic);self.assertNotIn('CASA COMPARTILHADA',automatic)  # 11/11
 
     def test_explicit_full_prompt_is_still_available(self):
         with patch.object(config,'CONTEXTO_MAX_TOKENS',16384):

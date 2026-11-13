@@ -758,7 +758,7 @@ class CognitiveTrainingTests(unittest.TestCase):
         (root/'chat.jsonl').write_text('\n'.join(json.dumps({'entity':'hoshino','source_id':f'turn:00{i}',
             'messages':[{'role':'user','content':'Caso original '+str(i)},
                         {'role':'assistant','content':'Resposta original '+str(i)}]}) for i in range(2)))
-        corpus=self.home/'pacote_identidade_v5';corpus.mkdir(exist_ok=True)
+        corpus=self.home/'pacote_identidade_v6';corpus.mkdir(exist_ok=True)
         def pair(user,answer):return {'messages':[{'role':'user','content':user},{'role':'assistant','content':answer}]}
         train=corpus/'hoshino_train.jsonl';val=corpus/'hoshino_validation.jsonl'
         train.write_text(json.dumps(pair('Pergunta anterior sobre um relógio.','Ouço um tic, mas preciso observar o mecanismo antes de opinar.'))+'\n')
@@ -777,7 +777,7 @@ class CognitiveTrainingTests(unittest.TestCase):
         proposals=self.home/'professor-moe-35b/propostas';proposals.mkdir(parents=True)
         (proposals/(job['id']+'.json')).write_text(json.dumps(proposal))
         job.update(state='proposed',proposal=job['id']);professor_moe._write(professor_moe.job_file(self.home,job['id']),job)
-        result=professor_moe.approved_export(self.home,job['id'],['turn:000','turn:001'],'pacote_identidade_v5:hoshino')
+        result=professor_moe.approved_export(self.home,job['id'],['turn:000','turn:001'],'pacote_identidade_v6:hoshino')
         derived=self.home/'datasets-importados'/result['dataset'].split(':')[1]
         self.assertEqual(cognitive.dataset_profile(derived/'train.jsonl','hoshino')[1],out['sha256'])
         self.assertEqual(versions.sha(derived/'validation.jsonl'),before);self.assertEqual(versions.sha(val),before)
@@ -820,7 +820,7 @@ class AutomaticPromotionTests(unittest.TestCase):
         # 05/11: a base de treino do 9B passou a ser o Qwen3.5-9B oficial.
         prov={'entity':'hoshino','base_path':str(self.home/'modelos/qwen3.5-9b-oficial-hf'),
               'cognitive_profile_sha256':self.profile_hash,'base_weights_sha256':{'weights':'fixture'},'validation_sha256':'val'}
-        val=self.home/'validation.jsonl';holdout=self.home/'pacote_identidade_v5/hoshino_holdout.jsonl';holdout.parent.mkdir()
+        val=self.home/'validation.jsonl';holdout=self.home/'pacote_identidade_v6/hoshino_holdout.jsonl';holdout.parent.mkdir()
         val.write_text('v\n'*10);holdout.write_text('h\n'*10)
         prov.update(validation_path=str(val),validation_sha256=versions.sha(val))
         train=self.home/'train.jsonl';train.write_text('isolated approved train fixture\n')
@@ -828,7 +828,8 @@ class AutomaticPromotionTests(unittest.TestCase):
         (self.candidate/'provenance.json').write_text(json.dumps(prov))
         (self.candidate/'micro_result.json').write_text(json.dumps({'cancelled':False}))
         answers=['Sou Hoshino.','Ainda não sei seu nome.','Seu nome é Nilo.','Vou chamar você de Lume.',
-                 'Não. Preciso verificar; o resultado é incerto.','Não significa rejeição.','A correção é 13.','Sim, podemos.']
+                 'Não. Preciso verificar; o resultado é incerto.','Não significa rejeição.','A correção é 13.','Sim, podemos.',
+                 '<tool_call>\n<function=abrir_aplicativo>\n<parameter=aplicativo>\nfirefox\n</parameter>\n</function>\n</tool_call>']
         responses=[{'id':c['id'],'text':text,'finished':True} for c,text in zip(versions.behavior_cases('hoshino'),answers)]
         self.record={'entity':'hoshino','physical_reload_verified':True,'finite_loss':True,
             'adapter_sha256':versions.sha(self.candidate/'adapter_model.safetensors'),
@@ -998,21 +999,21 @@ class MoEWorkflowTests(unittest.TestCase):
         self.assertEqual(professor_moe.detail(self.home,job['id'])['state'],'prepared')
 
     def test_curated_dataset_keeps_validation_and_does_not_train(self):
-        seed=self.home/'pacote_identidade_v5';seed.mkdir(exist_ok=True)
+        seed=self.home/'pacote_identidade_v6';seed.mkdir(exist_ok=True)
         train='\n'.join(json.dumps({'messages':[{'role':'user','content':f'P{i}'},{'role':'assistant','content':f'R{i}'}]}) for i in range(3))+'\n'
         validation='\n'.join(json.dumps({'messages':[{'role':'user','content':f'V{i}'},{'role':'assistant','content':f'G{i}'}]}) for i in range(3))+'\n'
         (seed/'alistair_train.jsonl').write_text(train)
         (seed/'alistair_validation.jsonl').write_text(validation)
         job=self.plan()
         approved=[f'chat:20261011:{i:04d}' for i in range(2)]
-        result=professor_moe.approved_export(self.home,job['id'],approved,'pacote_identidade_v5:alistair')
+        result=professor_moe.approved_export(self.home,job['id'],approved,'pacote_identidade_v6:alistair')
         self.assertFalse(result['training_started'])
         dataset={x['id']:x for x in allowed_data(self.home)}[result['dataset']]
         newtrain=Path(dataset['train']).read_text()
         self.assertEqual(Path(dataset['validation']).read_text(),validation)
         self.assertEqual(len(newtrain.splitlines()),5)
         with self.assertRaises(RuntimeError):
-            professor_moe.approved_export(self.home,job['id'],approved,'pacote_identidade_v5:alistair')
+            professor_moe.approved_export(self.home,job['id'],approved,'pacote_identidade_v6:alistair')
 
     def test_new_curated_export_preserves_complete_dialogues_and_bound_reviews(self):
         metadata=self.curated_export_fixture()
@@ -1026,7 +1027,7 @@ class MoEWorkflowTests(unittest.TestCase):
 
     def curated_export_fixture(self,reviewer='human'):
         # Conteúdo inventado em pasta temporária: não valida naturalidade real.
-        seed=self.home/'pacote_identidade_v5';seed.mkdir(exist_ok=True)
+        seed=self.home/'pacote_identidade_v6';seed.mkdir(exist_ok=True)
         for split in ('train','validation'):
             rows=[dict(messages=[dict(role='user',content=split+str(i)),dict(role='assistant',content='Original '+split+str(i))]) for i in range(3)]
             (seed/f'alistair_{split}.jsonl').write_text('\n'.join(json.dumps(r) for r in rows)+'\n')
@@ -1042,7 +1043,7 @@ class MoEWorkflowTests(unittest.TestCase):
         professor_moe._write(path,proposal)
         for sid in ids:professor_moe.review_examples(self.home,job['id'],sid,'approved',confirm=True,expected_hash=hashes[sid],
             reviewer=reviewer,authorization_reference='user:20261014:fixture' if reviewer=='codex_assisted' else None)
-        out=professor_moe.approved_export(self.home,job['id'],ids,'pacote_identidade_v5:alistair')
+        out=professor_moe.approved_export(self.home,job['id'],ids,'pacote_identidade_v6:alistair')
         self.assertFalse(out['training_started'])
         folder=self.home/'datasets-importados'/out['dataset'].split(':')[1]
         metadata=json.loads((folder/'origem_professor.json').read_text())
@@ -1052,17 +1053,17 @@ class MoEWorkflowTests(unittest.TestCase):
         return metadata
 
     def test_cross_entity_export_is_denied(self):
-        other=self.home/'pacote_identidade_v5';other.mkdir(exist_ok=True)
+        other=self.home/'pacote_identidade_v6';other.mkdir(exist_ok=True)
         (other/'hoshino_train.jsonl').write_text('{}')
         (other/'hoshino_validation.jsonl').write_text('{}')
         job=self.plan()
         with self.assertRaises(ValueError):
-            professor_moe.approved_export(self.home,job['id'],['chat:20261011:0000','chat:20261011:0001'],'pacote_identidade_v5:hoshino')
+            professor_moe.approved_export(self.home,job['id'],['chat:20261011:0000','chat:20261011:0001'],'pacote_identidade_v6:hoshino')
 
     def test_unreviewed_examples_cannot_be_exported(self):
         job=self.plan()
         with self.assertRaises(ValueError):
-            professor_moe.approved_export(self.home,job['id'],['chat:20261011:0000'], 'pacote_identidade_v5:alistair')
+            professor_moe.approved_export(self.home,job['id'],['chat:20261011:0000'], 'pacote_identidade_v6:alistair')
 
     def test_imported_teacher_dataset_bound_to_entity(self):
         with patch('laboratorio.candidatos.validate_local',return_value=True):
@@ -1116,7 +1117,7 @@ class Heavy10KTests(unittest.TestCase):
             professor_moe.prepare(self.home,'alistair','dados.jsonl',mode='unknown')
 
     def test_seed_variants_filtered_without_reading_validation(self):
-        dataset = self.home/'pacote_identidade_v5'; dataset.mkdir(exist_ok=True)
+        dataset = self.home/'pacote_identidade_v6'; dataset.mkdir(exist_ok=True)
         records=[]
         for i in range(5):
             for j in range(3):
@@ -1127,7 +1128,7 @@ class Heavy10KTests(unittest.TestCase):
         validation='{"messages": []}\n'
         (dataset/'alistair_validation.jsonl').write_text(validation)
         done=professor_moe.prepare_from_dataset(self.home,'alistair',
-              'pacote_identidade_v5:alistair',40,mode='heavy_10k')
+              'pacote_identidade_v6:alistair',40,mode='heavy_10k')
         self.assertEqual(done['included'],5)
         self.assertEqual(done['duplicate_variations_filtered'],10)
         self.assertEqual((dataset/'alistair_validation.jsonl').read_text(), validation)

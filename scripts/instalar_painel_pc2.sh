@@ -42,6 +42,8 @@ command -v wmctrl >/dev/null || falta+=(wmctrl)
 command -v xprintidle >/dev/null || falta+=(xprintidle)
 command -v playerctl >/dev/null || falta+=(playerctl)
 command -v xprop >/dev/null || falta+=(x11-utils)
+# Atalho global "segure para falar" (07/11): a janela escuta o teclado pelo pynput do sistema.
+python3 -c 'import pynput' 2>/dev/null || falta+=(python3-pynput)
 if ((${#falta[@]})); then
   echo "Instalando: ${falta[*]} (pede a senha do sudo)"
   sudo apt-get update -qq
@@ -83,21 +85,11 @@ case "$status" in
 esac
 
 # 5. Atalho no menu. Fechar esta janela fecha só o painel; a Central e as entidades seguem no PC1.
-mkdir -p "$HOME/.local/share/applications"
-cat > "$HOME/.local/share/applications/hoshino-e-lilith-painel.desktop" <<DESKTOP
-[Desktop Entry]
-Type=Application
-Name=Central Hoshino e Lilith (PC2)
-Comment=Painel da Central do PC1 pela rede local
-Exec=/usr/bin/python3 "$DESTINO/app/ui/central_native.py" --root "$DESTINO"
-Icon=$DESTINO/desktop/hoshino-e-lilith.svg
-Terminal=false
-Categories=Utility;
-DESKTOP
-chmod 644 "$HOME/.local/share/applications/hoshino-e-lilith-painel.desktop"
-command -v update-desktop-database >/dev/null && update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+#    O atalho passa pelo abrir_painel_pc2.sh, que atualiza o código pelo GitHub a cada abertura (11/11).
+bash "$DESTINO/scripts/abrir_painel_pc2.sh" --instalar-atalho
 
 echo
 echo "Pronto. Abra 'Central Hoshino e Lilith (PC2)' no menu, ou rode:"
-echo "  /usr/bin/python3 \"$DESTINO/app/ui/central_native.py\" --root \"$DESTINO\""
-echo "Para atualizar depois: rode este script de novo com o mesmo IP e código."
+echo "  bash \"$DESTINO/scripts/abrir_painel_pc2.sh\""
+echo "O painel se atualiza sozinho pelo GitHub toda vez que abre. Só precisa rodar este script de novo"
+echo "se o IP ou o código do PC1 mudarem."

@@ -21,9 +21,13 @@ def local_person(rows):
         row=dict(raw)
         try:channels=json.loads(row.get('canais') or '{}')
         except (ValueError,TypeError):continue
-        if not isinstance(channels,dict) or row.get('status','active')!='active':continue
-        if channels.get('localhub')=='usuario':priority=2
-        elif channels.get('tui')=='local':priority=1
+        # 07/11: people.py grava lista [{"canal","id"}]; só o dicionário antigo era lido e o nome nunca aparecia.
+        if isinstance(channels,dict):pairs={(str(k),str(v)) for k,v in channels.items()}
+        elif isinstance(channels,list):pairs={(str(c.get('canal')),str(c.get('id'))) for c in channels if isinstance(c,dict)}
+        else:continue
+        if row.get('status','active')!='active':continue
+        if ('localhub','usuario') in pairs:priority=2
+        elif ('tui','local') in pairs:priority=1
         else:continue
         candidates.append((priority,str(row.get('ultimo_contato') or ''),row))
     return max(candidates,key=lambda item:item[:2])[2] if candidates else None
@@ -74,7 +78,7 @@ def learn(database, message, *, speech_understood=False):
                        (name,json.dumps(aliases,ensure_ascii=False),now,person['id']))
         else:
             db.execute('INSERT INTO people(id,nome,canais,apelidos,primeiro_contato,ultimo_contato) VALUES(?,?,?,?,?,?)',
-                       ('person-'+uuid.uuid4().hex,name,json.dumps({'localhub':'usuario'}),'[]',now,now))
+                       ('person-'+uuid.uuid4().hex,name,json.dumps([{'canal':'localhub','id':'usuario'}]),'[]',now,now))
     return True
 
 

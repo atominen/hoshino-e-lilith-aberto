@@ -93,6 +93,8 @@ class LimpezaExperiencia(unittest.TestCase):
         with contextlib.closing(sqlite3.connect(backup/'mind.sqlite3'))as db:
             self.assertEqual(db.execute('SELECT content FROM memories').fetchone()[0],'EXPERIENCIA_FIXTURE')
         self.assertEqual((backup/'manifest.json').stat().st_mode&0o777,0o600)
+        marca=json.loads((paths.runtime/mm.RECOMECO).read_text())  # 11/11: o resumo diário não relê o que veio antes
+        self.assertEqual(marca['backup'],str(backup));self.assertTrue(marca['desde'])
         with patch.object(mm,'delete',side_effect=AssertionError('no replay')):
             self.assertEqual(self.control.delete_memory(data),result)
 
